@@ -1,0 +1,21 @@
+# Build directories and files
+build/
+*.o
+*.d
+
+# Executable files
+*.bin
+*.elf
+
+# Log files
+*.log
+*.out
+
+# Temporary files
+*.swp
+*.tmp
+*~
+
+# Pintos specific
+*.result
+.pintos-gdb
