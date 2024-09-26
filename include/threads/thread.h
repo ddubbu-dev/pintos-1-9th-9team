@@ -89,6 +89,7 @@ struct thread {
     tid_t tid;                 /* Thread identifier. */
     enum thread_status status; /* Thread state. */
     char name[16];             /* Name (for debugging purposes). */
+    int wakeup_tick;           /* Compare with global tick*/
     int priority;              /* Priority. */
 
     /* Shared between thread.c and synch.c. */
