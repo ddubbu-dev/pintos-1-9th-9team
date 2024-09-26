@@ -27,6 +27,8 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+/* List of processes in THREAD_READY state, that is, processes that
+are ready to run but not actually running. */
 static struct list sleep_list;
 
 /* Idle thread. */
@@ -147,6 +149,23 @@ void thread_tick(void) {
     /* Enforce preemption. */
     if (++thread_ticks >= TIME_SLICE)
         intr_yield_on_return();
+}
+
+/* if the current thread is not idle thread,
+    change the state of the caller thread to BLOCKED,
+    store the local tick to wake up,
+    update the global tick if necessary,
+    and call schedule() */
+/* when you manipulate thread list, disable interrupt! */
+void thread_sleep(int64_t ticks) {
+    struct thread *t = thread_current();
+
+    if (t != idle_thread) {
+        t->status = THREAD_BLOCKED;
+        t->wakeup_tick = ticks;
+        do_schedule(THREAD_BLOCKED);
+        // idle_ticks++;        // remind later
+    }
 }
 
 /* Prints thread statistics. */
