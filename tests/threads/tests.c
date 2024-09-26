@@ -9,33 +9,33 @@ struct test {
 };
 
 static const struct test tests[] = {
-    {"alarm-single", test_alarm_single},
-    {"alarm-multiple", test_alarm_multiple},
-    {"alarm-simultaneous", test_alarm_simultaneous},
-    {"alarm-priority", test_alarm_priority},
-    {"alarm-zero", test_alarm_zero},
-    {"alarm-negative", test_alarm_negative},
-    {"priority-change", test_priority_change},
-    {"priority-donate-one", test_priority_donate_one},
-    {"priority-donate-multiple", test_priority_donate_multiple},
-    {"priority-donate-multiple2", test_priority_donate_multiple2},
-    {"priority-donate-nest", test_priority_donate_nest},
-    {"priority-donate-sema", test_priority_donate_sema},
-    {"priority-donate-lower", test_priority_donate_lower},
-    {"priority-donate-chain", test_priority_donate_chain},
-    {"priority-fifo", test_priority_fifo},
-    {"priority-preempt", test_priority_preempt},
-    {"priority-sema", test_priority_sema},
-    {"priority-condvar", test_priority_condvar},
-    {"mlfqs-load-1", test_mlfqs_load_1},
-    {"mlfqs-load-60", test_mlfqs_load_60},
-    {"mlfqs-load-avg", test_mlfqs_load_avg},
-    {"mlfqs-recent-1", test_mlfqs_recent_1},
-    {"mlfqs-fair-2", test_mlfqs_fair_2},
-    {"mlfqs-fair-20", test_mlfqs_fair_20},
-    {"mlfqs-nice-2", test_mlfqs_nice_2},
-    {"mlfqs-nice-10", test_mlfqs_nice_10},
-    {"mlfqs-block", test_mlfqs_block},
+    {"alarm-single", test_alarm_single},                           // Pass
+    {"alarm-multiple", test_alarm_multiple},                       // Pass
+    {"alarm-simultaneous", test_alarm_simultaneous},               // Pass
+    {"alarm-priority", test_alarm_priority},                       // F
+    {"alarm-zero", test_alarm_zero},                               // Pass
+    {"alarm-negative", test_alarm_negative},                       // Pass
+    {"priority-change", test_priority_change},                     // F
+    {"priority-donate-one", test_priority_donate_one},             // F
+    {"priority-donate-multiple", test_priority_donate_multiple},   // F
+    {"priority-donate-multiple2", test_priority_donate_multiple2}, // F
+    {"priority-donate-nest", test_priority_donate_nest},           // F
+    {"priority-donate-sema", test_priority_donate_sema},           // F
+    {"priority-donate-lower", test_priority_donate_lower},         // F
+    {"priority-donate-chain", test_priority_donate_chain},         // F
+    {"priority-fifo", test_priority_fifo},                         // F
+    {"priority-preempt", test_priority_preempt},                   // F
+    {"priority-sema", test_priority_sema},                         // F
+    {"priority-condvar", test_priority_condvar},                   // F
+    {"mlfqs-load-1", test_mlfqs_load_1},                           // F
+    {"mlfqs-load-60", test_mlfqs_load_60},                         // F
+    {"mlfqs-load-avg", test_mlfqs_load_avg},                       // F
+    {"mlfqs-recent-1", test_mlfqs_recent_1},                       // F
+    {"mlfqs-fair-2", test_mlfqs_fair_2},                           // Pass
+    {"mlfqs-fair-20", test_mlfqs_fair_20},                         // Pass
+    {"mlfqs-nice-2", test_mlfqs_nice_2},                           // F
+    {"mlfqs-nice-10", test_mlfqs_nice_10},                         // F
+    {"mlfqs-block", test_mlfqs_block},                             // F
 };
 
 static const char *test_name;
