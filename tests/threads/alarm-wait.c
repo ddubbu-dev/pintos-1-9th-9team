@@ -51,29 +51,29 @@ static void test_sleep(int thread_cnt, int iterations) {
     msg("Thread 0 sleeps 10 ticks each time,");
     msg("thread 1 sleeps 20 ticks each time, and so on.");
     msg("If successful, product of iteration count and");
-    msg("sleep duration will appear in nondescending order.");
+    msg("sleep duration will appear in nondescending order."); // 반복횟수 x 수면시간 오름차순
 
     /* Allocate memory. */
     threads = malloc(sizeof *threads * thread_cnt);
-    output = malloc(sizeof *output * iterations * thread_cnt * 2);
+    output = malloc(sizeof *output * iterations * thread_cnt * 2); // 각 쓰레드가 깨어나는 순서대로 자신의 ID가 저장
     if (threads == NULL || output == NULL)
         PANIC("couldn't allocate memory for test");
 
     /* Initialize test. */
-    test.start = timer_ticks() + 100;
+    test.start = timer_ticks() + 100; // 100만큼 지연 시작
     test.iterations = iterations;
     lock_init(&test.output_lock);
-    test.output_pos = output;
+    test.output_pos = output; // output 쓰기 위치
 
     /* Start threads. */
     ASSERT(output != NULL);
     for (i = 0; i < thread_cnt; i++) {
-        struct sleep_thread *t = threads + i;
+        struct sleep_thread *t = threads + i; // threads 배열의 i번째 요소
         char name[16];
 
         t->test = &test;
         t->id = i;
-        t->duration = (i + 1) * 10;
+        t->duration = (i + 1) * 10; // 10 간격으로 실행됨
         t->iterations = 0;
 
         snprintf(name, sizeof name, "thread %d", i);
@@ -81,10 +81,14 @@ static void test_sleep(int thread_cnt, int iterations) {
     }
 
     /* Wait long enough for all the threads to finish. */
-    timer_sleep(100 + thread_cnt * iterations * 10 + 100);
+    timer_sleep(100 + thread_cnt * iterations * 10 + 100); // main thread sleep; 총 이만큼의 tick 발생
 
-    /* Acquire the output lock in case some rogue thread is still
-       running. */
+    // ============================ main thread 깨어난 뒤 테스트 검증 ============================
+    /**
+     * Acquire the output lock in case some rogue thread is still running.
+     * lock_acquire, lock_release 는 동기화를 위해 사용됨.
+     * 여러 쓰레드가 동시에 공유 자원에 접근할 때 데이터의 일관성을 보장하기 위해 Mutual Exclusion 구현
+     *  */
     lock_acquire(&test.output_lock);
 
     /* Print completion order. */
@@ -93,8 +97,8 @@ static void test_sleep(int thread_cnt, int iterations) {
         struct sleep_thread *t;
         int new_prod;
 
-        ASSERT(*op >= 0 && *op < thread_cnt);
-        t = threads + *op;
+        ASSERT(*op >= 0 && *op < thread_cnt); // op = idx; 0 ~ (thread_cnt-1)
+        t = threads + *op;                    // threads 배열의 i번째 요소
 
         new_prod = ++t->iterations * t->duration;
 
@@ -103,7 +107,7 @@ static void test_sleep(int thread_cnt, int iterations) {
         if (new_prod >= product)
             product = new_prod;
         else
-            fail("thread %d woke up out of order (%d > %d)!", t->id, product, new_prod);
+            fail("thread %d woke up out of order (%d > %d)!", t->id, product, new_prod); // product 오름차순 보장
     }
 
     /* Verify that we had the proper number of wakeups. */
@@ -125,8 +129,8 @@ static void sleeper(void *t_) {
     for (i = 1; i <= test->iterations; i++) {
         int64_t sleep_until = test->start + i * t->duration;
         timer_sleep(sleep_until - timer_ticks());
-        lock_acquire(&test->output_lock);
-        *test->output_pos++ = t->id;
-        lock_release(&test->output_lock);
+        lock_acquire(&test->output_lock); // 깨어난 뒤 lock 후 output_pos 업데이트
+        *test->output_pos++ = t->id;      // output_pos를 이용해서 기록 후 위치 이동
+        lock_release(&test->output_lock); // lock 해제
     }
 }
