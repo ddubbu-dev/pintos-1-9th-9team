@@ -151,24 +151,6 @@ void thread_tick(void) {
         intr_yield_on_return();
 }
 
-/* if the current thread is not idle thread,
-    change the state of the caller thread to BLOCKED,
-    store the local tick to wake up,
-    update the global tick if necessary,
-    and call schedule() */
-/* when you manipulate thread list, disable interrupt! */
-void thread_sleep(int64_t ticks) {
-    struct thread *t = thread_current();
-
-    if (t != idle_thread) {
-        t->status = THREAD_BLOCKED;
-        t->wakeup_tick = ticks;
-        do_schedule(THREAD_BLOCKED);
-        list_push_back(&sleep_list, &t->elem);
-        // idle_ticks++;        // remind later
-    }
-}
-
 /* Prints thread statistics. */
 void thread_print_stats(void) { printf("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n", idle_ticks, kernel_ticks, user_ticks); }
 
@@ -568,17 +550,22 @@ static tid_t allocate_tid(void) {
 
 // ============================== 추가된 내용 ===========================
 
-/* (wake up) move the thread from the sleep list to the ready list */
-void sleeping_thread_wakeup(struct list_elem *elem_ptr) {
-    enum intr_level old_level;
-    old_level = intr_disable();
+/* if the current thread is not idle thread,
+    change the state of the caller thread to BLOCKED,
+    store the local tick to wake up,
+    update the global tick if necessary,
+    and call schedule() */
+/* when you manipulate thread list, disable interrupt! */
+void thread_sleep(int64_t ticks) {
+    struct thread *t = thread_current();
 
-    list_remove(elem_ptr); // 신기방기; list head 없어도 doubly linke list 라서 자체적으로 끊을 수 있음
-    list_push_back(&ready_list, elem_ptr);
-    struct thread *t = list_entry(elem_ptr, struct thread, elem);
-    t->status = THREAD_READY;
-
-    intr_set_level(old_level);
+    if (t != idle_thread) {
+        t->status = THREAD_BLOCKED;
+        t->wakeup_tick = ticks;
+        do_schedule(THREAD_BLOCKED);
+        list_push_back(&sleep_list, &t->elem);
+        // idle_ticks++;        //TODO: remind later
+    }
 }
 
 /* The function that find the thread to wake up from sleep queue */
@@ -597,4 +584,17 @@ void find_thread_to_wake_up() {
     if (wakeup_tick <= global_tick) { // wake up!!
         sleeping_thread_wakeup(elem_ptr);
     }
+}
+
+/* (wake up) move the thread from the sleep list to the ready list */
+void sleeping_thread_wakeup(struct list_elem *elem_ptr) {
+    enum intr_level old_level;
+    old_level = intr_disable();
+
+    list_remove(elem_ptr); // 신기방기; list head 없어도 doubly linke list 라서 자체적으로 끊을 수 있음
+    list_push_back(&ready_list, elem_ptr);
+    struct thread *t = list_entry(elem_ptr, struct thread, elem);
+    t->status = THREAD_READY;
+
+    intr_set_level(old_level);
 }
