@@ -9,7 +9,7 @@ include ../Make.vars
 include ../../tests/Make.tests
 
 # Compiler and assembler options.
-os.dsk: CPPFLAGS += -I$(SRCDIR)/lib/kernel
+os.dsk: CPPFLAGS += -I$(SRCDIR)/lib/kernel -g
 
 # Core kernel.
 include ../../threads/targets.mk
