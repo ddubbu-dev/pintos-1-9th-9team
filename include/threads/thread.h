@@ -143,4 +143,8 @@ int thread_get_load_avg(void);
 
 void do_iret(struct intr_frame *tf);
 
+// ============================== 추가된 내용 ===========================
+void sleeping_thread_wakeup(struct list_elem *elem_ptr);
+void find_thread_to_wake_up();
+
 #endif /* threads/thread.h */
