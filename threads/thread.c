@@ -164,6 +164,7 @@ void thread_sleep(int64_t ticks) {
         t->status = THREAD_BLOCKED;
         t->wakeup_tick = ticks;
         do_schedule(THREAD_BLOCKED);
+        list_push_back(&sleep_list, &t->elem);
         // idle_ticks++;        // remind later
     }
 }
