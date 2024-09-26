@@ -89,7 +89,7 @@ struct thread {
     tid_t tid;                 /* Thread identifier. */
     enum thread_status status; /* Thread state. */
     char name[16];             /* Name (for debugging purposes). */
-    int wakeup_tick;           /* Compare with global tick*/
+    int64_t wakeup_tick;       /* Compare with global tick*/
     int priority;              /* Priority. */
 
     /* Shared between thread.c and synch.c. */
@@ -142,5 +142,9 @@ int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
 void do_iret(struct intr_frame *tf);
+
+// ============================== 추가된 내용 ===========================
+void sleeping_thread_wakeup(struct list_elem *elem_ptr);
+void find_thread_to_wake_up();
 
 #endif /* threads/thread.h */
