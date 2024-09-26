@@ -41,6 +41,7 @@ void timer_init(void) {
     outb(0x40, count & 0xff);
     outb(0x40, count >> 8);
 
+    // 시간 줄여가면서 0가 될때 timer_interrupt 호출
     intr_register_ext(0x20, timer_interrupt, "8254 Timer");
 }
 
@@ -53,8 +54,8 @@ void timer_calibrate(void) {
 
     /* Approximate loops_per_tick as the largest power-of-two
        still less than one timer tick. */
-    loops_per_tick = 1u << 10;
-    while (!too_many_loops(loops_per_tick << 1)) {
+    loops_per_tick = 1u << 10;                     // 1024
+    while (!too_many_loops(loops_per_tick << 1)) { // ?
         loops_per_tick <<= 1;
         ASSERT(loops_per_tick != 0);
     }
@@ -70,9 +71,9 @@ void timer_calibrate(void) {
 
 /* Returns the number of timer ticks since the OS booted. */
 int64_t timer_ticks(void) {
-    enum intr_level old_level = intr_disable();
-    int64_t t = ticks;
-    intr_set_level(old_level);
+    enum intr_level old_level = intr_disable(); // INTR_OFF 고정
+    int64_t t = ticks;                          // 내부 연산 보장
+    intr_set_level(old_level);                  // 복귀
     barrier();
     return t;
 }
@@ -82,11 +83,11 @@ int64_t timer_ticks(void) {
 int64_t timer_elapsed(int64_t then) { return timer_ticks() - then; }
 
 /* Suspends execution for approximately TICKS timer ticks. */
-void timer_sleep(int64_t ticks) {
-    int64_t start = timer_ticks();
+void timer_sleep(int64_t end) {
+    int64_t start = timer_ticks(); // base
 
-    ASSERT(intr_get_level() == INTR_ON);
-    while (timer_elapsed(start) < ticks)
+    ASSERT(intr_get_level() == INTR_ON); // INTR_ON 기대한다.
+    while (timer_elapsed(start) < end)   // start++ 되면서, 다가가는 중
         thread_yield();
 }
 
@@ -113,15 +114,15 @@ static void timer_interrupt(struct intr_frame *args UNUSED) {
 static bool too_many_loops(unsigned loops) {
     /* Wait for a timer tick. */
     int64_t start = ticks;
-    while (ticks == start)
-        barrier();
+    while (ticks == start) // timer_interrupt 호출 시 탈출함
+        barrier();         // 메모리 일관성을 보장하기 위해 사용함
 
     /* Run LOOPS loops. */
     start = ticks;
     busy_wait(loops);
 
     /* If the tick count changed, we iterated too long. */
-    barrier();
+    barrier(); // ?
     return start != ticks;
 }
 
@@ -138,14 +139,14 @@ static void NO_INLINE busy_wait(int64_t loops) {
 }
 
 /* Sleep for approximately NUM/DENOM seconds. */
-static void real_time_sleep(int64_t num, int32_t denom) {
+static void real_time_sleep(int64_t num, int32_t denom) { // timer_msleep, ...
     /* Convert NUM/DENOM seconds into timer ticks, rounding down.
 
        (NUM / DENOM) s
        ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
        1 s / TIMER_FREQ ticks
        */
-    int64_t ticks = num * TIMER_FREQ / denom;
+    int64_t ticks = num * TIMER_FREQ / denom; // 버림 연산
 
     ASSERT(intr_get_level() == INTR_ON);
     if (ticks > 0) {

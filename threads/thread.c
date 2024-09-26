@@ -32,10 +32,10 @@ static struct list ready_list;
 static struct thread *idle_thread;
 
 /* Initial thread, the thread running init.c:main(). */
-static struct thread *initial_thread;
+static struct thread *initial_thread; // kernel thread ?
 
 /* Lock used by allocate_tid(). */
-static struct lock tid_lock;
+static struct lock tid_lock; // 해당 공유 변수를 점유한 thread
 
 /* Thread destruction requests */
 static struct list destruction_req;
@@ -71,12 +71,12 @@ static tid_t allocate_tid(void);
  * down to the start of a page.  Since `struct thread' is
  * always at the beginning of a page and the stack pointer is
  * somewhere in the middle, this locates the curent thread. */
-#define running_thread() ((struct thread *)(pg_round_down(rrsp())))
+#define running_thread() ((struct thread *)(pg_round_down(rrsp()))) // 왜 rrsp로부터 running을 알 수 있음?
 
 // Global descriptor table for the thread_start.
 // Because the gdt will be setup after the thread_init, we should
 // setup temporal gdt first.
-static uint64_t gdt[3] = {0, 0x00af9a000000ffff, 0x00cf92000000ffff};
+static uint64_t gdt[3] = {0, 0x00af9a000000ffff, 0x00cf92000000ffff}; // NULL 세그먼트, 코드 세그먼트, 데이터 세그먼트
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -91,7 +91,7 @@ static uint64_t gdt[3] = {0, 0x00af9a000000ffff, 0x00cf92000000ffff};
 
    It is not safe to call thread_current() until this function
    finishes. */
-void thread_init(void) {
+void thread_init(void) { // thread file init
     ASSERT(intr_get_level() == INTR_OFF);
 
     /* Reload the temporal gdt for the kernel
@@ -182,14 +182,14 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
 
     /* Call the kernel_thread if it scheduled.
      * Note) rdi is 1st argument, and rsi is 2nd argument. */
-    t->tf.rip = (uintptr_t)kernel_thread;
-    t->tf.R.rdi = (uint64_t)function;
-    t->tf.R.rsi = (uint64_t)aux;
-    t->tf.ds = SEL_KDSEG;
-    t->tf.es = SEL_KDSEG;
-    t->tf.ss = SEL_KDSEG;
-    t->tf.cs = SEL_KCSEG;
-    t->tf.eflags = FLAG_IF;
+    t->tf.rip = (uintptr_t)kernel_thread; // ?
+    t->tf.R.rdi = (uint64_t)function;     // 범용 레지스터 data
+    t->tf.R.rsi = (uint64_t)aux;          // 범용 레지스터 source
+    t->tf.ds = SEL_KDSEG;                 // data segment
+    t->tf.es = SEL_KDSEG;                 // extra segment
+    t->tf.ss = SEL_KDSEG;                 // stack segment
+    t->tf.cs = SEL_KCSEG;                 // code segment
+    t->tf.eflags = FLAG_IF;               // extended segment
 
     /* Add to run queue. */
     thread_unblock(t);
@@ -204,7 +204,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
    is usually a better idea to use one of the synchronization
    primitives in synch.h. */
 void thread_block(void) {
-    ASSERT(!intr_context());
+    ASSERT(!intr_context()); // intr_context: 외부 인터럽트를 처리중
     ASSERT(intr_get_level() == INTR_OFF);
     thread_current()->status = THREAD_BLOCKED;
     schedule();
@@ -218,7 +218,7 @@ void thread_block(void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
-void thread_unblock(struct thread *t) {
+void thread_unblock(struct thread *t) { // thread_yield 차이점
     enum intr_level old_level;
 
     ASSERT(is_thread(t));
@@ -290,6 +290,8 @@ void thread_set_priority(int new_priority) { thread_current()->priority = new_pr
 /* Returns the current thread's priority. */
 int thread_get_priority(void) { return thread_current()->priority; }
 
+// nice한 쓰레드는 양보를 더 할거임, 우선순위가 낮다.
+// Q. 우선순위와의 차이는 뭘까?
 /* Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice UNUSED) { /* TODO: Your implementation goes here */ }
 
@@ -326,7 +328,7 @@ static void idle(void *idle_started_ UNUSED) {
     idle_thread = thread_current();
     sema_up(idle_started);
 
-    for (;;) {
+    for (;;) { // 불침번, 못 쉼, 탈출 없음. CPU 권한을 뺏김
         /* Let someone else run. */
         intr_disable();
         thread_block();
@@ -489,7 +491,7 @@ static void do_schedule(int status) {
     ASSERT(thread_current()->status == THREAD_RUNNING);
     while (!list_empty(&destruction_req)) {
         struct thread *victim = list_entry(list_pop_front(&destruction_req), struct thread, elem);
-        palloc_free_page(victim);
+        palloc_free_page(victim); // free
     }
     thread_current()->status = status;
     schedule();
@@ -534,7 +536,7 @@ static void schedule(void) {
 
 /* Returns a tid to use for a new thread. */
 static tid_t allocate_tid(void) {
-    static tid_t next_tid = 1;
+    static tid_t next_tid = 1; // 모노 증가 보장
     tid_t tid;
 
     lock_acquire(&tid_lock);
