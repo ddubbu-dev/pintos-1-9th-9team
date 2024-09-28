@@ -65,6 +65,7 @@ static void init_thread(struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule(void);
 static tid_t allocate_tid(void);
+static bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -229,7 +230,7 @@ void thread_unblock(struct thread *t) {
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    list_push_back(&ready_list, &t->elem);
+    list_insert_ordered(&ready_list, &t->elem, comp_priority, NULL);
     t->status = THREAD_READY;
     intr_set_level(old_level);
 }
@@ -283,7 +284,7 @@ void thread_yield(void) {
 
     old_level = intr_disable();
     if (curr != idle_thread)
-        list_push_back(&ready_list, &curr->elem);
+        list_insert_ordered(&ready_list, &curr->elem, comp_priority, NULL);
     do_schedule(THREAD_READY);
     intr_set_level(old_level);
 }
@@ -581,4 +582,12 @@ void find_thread_to_wake_up(void) {
             e = list_next(e);
         }
     }
+}
+/* Returns true if priority A is less than priority B, false
+   otherwise. */
+static bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
+    const struct thread *a = list_entry(a_, struct thread, elem);
+    const struct thread *b = list_entry(b_, struct thread, elem);
+
+    return a->priority < b->priority;
 }
