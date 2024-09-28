@@ -583,11 +583,11 @@ void find_thread_to_wake_up(void) {
         }
     }
 }
-/* Returns true if priority A is less than priority B, false
+/* Returns true if priority A is bigger or equal than priority B, false
    otherwise. */
 static bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
     const struct thread *a = list_entry(a_, struct thread, elem);
     const struct thread *b = list_entry(b_, struct thread, elem);
 
-    return a->priority < b->priority;
+    return a->priority >= b->priority;
 }
