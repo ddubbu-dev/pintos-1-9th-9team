@@ -12,7 +12,7 @@ static const struct test tests[] = {
     {"alarm-single", test_alarm_single},                           // Pass
     {"alarm-multiple", test_alarm_multiple},                       // Pass
     {"alarm-simultaneous", test_alarm_simultaneous},               // Pass
-    {"alarm-priority", test_alarm_priority},                       // F
+    {"alarm-priority", test_alarm_priority},                       // Pass
     {"alarm-zero", test_alarm_zero},                               // Pass
     {"alarm-negative", test_alarm_negative},                       // Pass
     {"priority-change", test_priority_change},                     // F
