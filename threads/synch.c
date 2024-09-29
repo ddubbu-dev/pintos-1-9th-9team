@@ -188,16 +188,17 @@ void lock_acquire(struct lock *lock) { // lock 획득
     ASSERT(!intr_context());
     ASSERT(!lock_held_by_current_thread(lock));
 
-    // lock < main < acquire1(31) < acquire2(32)
-    // acquire1(32) 로 기부받음
-
     struct thread *curr = thread_current();
     if (lock->holder != NULL && lock->holder->priority < curr->priority) {
+        // lock < main < acquire1(31) < acquire2(32)
+        // acquire1(32) 로 기부받음
         lock->holder->priority = curr->priority;
         list_insert_ordered(&(lock->holder->donations), &curr->d_elem, comp_priority, NULL);
     }
 
+    curr->wait_on_lock = lock;
     sema_down(&lock->semaphore); // lock 사용 혹은 대기
+    curr->wait_on_lock = NULL;
     lock->holder = thread_current();
 }
 
@@ -232,11 +233,34 @@ void lock_release(struct lock *lock) { // lock 해제
     int is_updated = 0;
 
     if (lock->holder && !list_empty(&(lock->holder->donations))) {
-        struct list_elem *poped_elem = list_pop_front(&(lock->holder->donations));
-        struct thread *poped_thread = list_entry(poped_elem, struct thread, d_elem);
+        // d_elem 제거하고
+        // elem 제거하고
 
-        list_remove(&poped_thread->elem); // wait list에서 제거
-        thread_unblock(poped_thread);
+        struct list donations = lock->holder->donations;
+        struct list_elem *d_e, *next_elem;
+
+        // 같은 lock 타입의 d_elem 찾기
+        for (d_e = list_begin(&donations); d_e != list_end(&donations);) {
+            struct thread *poped_thread = list_entry(d_e, struct thread, d_elem);
+            next_elem = d_e->next;
+
+            if (poped_thread->wait_on_lock == lock) {
+                list_remove(d_e);
+                list_remove(&poped_thread->elem);
+                thread_unblock(poped_thread);
+                break;
+            }
+
+            if (next_elem != NULL) {
+                d_e = next_elem;
+            } else {
+                break;
+            }
+        }
+
+        // struct list_elem *poped_elem = list_pop_front(&(lock->holder->donations));
+        // struct thread *poped_thread = list_entry(poped_elem, struct thread, d_elem);
+        // list_remove(&poped_thread->elem); // wait list에서 제거
 
         // 새로운 기부자의 우선순위 반영
         if (lock->holder && !list_empty(&(lock->holder->donations))) {

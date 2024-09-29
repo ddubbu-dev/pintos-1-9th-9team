@@ -93,9 +93,9 @@ struct thread {
     int priority;              /* Priority. */
     int origin_priority;
 
-    // struct lock *wait_on_lock; /* lock that it waits for */
-    struct list donations;   /* list of Donors */
-    struct list_elem d_elem; /* List element for donations */
+    struct lock *wait_on_lock; /* lock that it waits for */
+    struct list donations;     /* list of Donors */
+    struct list_elem d_elem;   /* List element for donations */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem; /* List element for ready/wait */

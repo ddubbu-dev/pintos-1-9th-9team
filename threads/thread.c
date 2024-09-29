@@ -399,9 +399,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
     t->priority = priority;
     t->origin_priority = priority; // read only
-    // t->wait_on_lock = NULL;
+    t->wait_on_lock = NULL;
     list_init(&(t->donations));
-    /// TODO: d_elem_ptr 초기화?
 
     t->magic = THREAD_MAGIC;
 }
