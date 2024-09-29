@@ -146,5 +146,7 @@ void do_iret(struct intr_frame *tf);
 // ============================== 추가된 내용 ===========================
 void thread_sleep(int64_t ticks);
 void find_thread_to_wake_up();
+void check_need_to_yield(int target_priority);
+bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 #endif /* threads/thread.h */

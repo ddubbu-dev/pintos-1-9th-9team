@@ -25,7 +25,7 @@ static const struct test tests[] = {
     {"priority-donate-chain", test_priority_donate_chain},         // F
     {"priority-fifo", test_priority_fifo},                         // F
     {"priority-preempt", test_priority_preempt},                   // F
-    {"priority-sema", test_priority_sema},                         // F
+    {"priority-sema", test_priority_sema},                         // Pass
     {"priority-condvar", test_priority_condvar},                   // F
     {"mlfqs-load-1", test_mlfqs_load_1},                           // F
     {"mlfqs-load-60", test_mlfqs_load_60},                         // F

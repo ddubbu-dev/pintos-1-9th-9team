@@ -66,8 +66,9 @@ void sema_down(struct semaphore *sema) {
     ASSERT(!intr_context());
 
     old_level = intr_disable();
-    while (sema->value == 0) {
-        list_push_back(&sema->waiters, &thread_current()->elem);
+
+    while (sema->value == 0) { // TODO: if문 아닌 이유 확인
+        list_insert_ordered(&sema->waiters, &thread_current()->elem, comp_priority, NULL);
         thread_block();
     }
     sema->value--;
@@ -109,10 +110,15 @@ void sema_up(struct semaphore *sema) {
     ASSERT(sema != NULL);
 
     old_level = intr_disable();
-    if (!list_empty(&sema->waiters))
+    if (!list_empty(&sema->waiters)) {
+        // TODO: multiple donation에서 sort가 필요하지 않을까?
+        // list_sort(&sema->waiters, comp_priority, NULL);
         thread_unblock(list_entry(list_pop_front(&sema->waiters), struct thread, elem)); // 대기 중인 스레드 깨우기 (TODO: 우선순위)
-    sema->value++;                                                                       // 세마포어 값을 증가시키고,
+    }
+
+    sema->value++; // 세마포어 값을 증가시키고,
     intr_set_level(old_level);
+    check_need_to_yield(thread_get_priority());
 }
 
 static void sema_test_helper(void *sema_);

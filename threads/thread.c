@@ -65,7 +65,6 @@ static void init_thread(struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule(void);
 static tid_t allocate_tid(void);
-static bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -298,16 +297,23 @@ void thread_yield(void) {
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void thread_set_priority(int new_priority) {
-    thread_current()->priority = new_priority;
-    list_sort(&ready_list, comp_priority, NULL);
+
+void check_need_to_yield(int target_priority) {
+    // [e.g] target_priority = thread_get_priority();
+    // current vs ready->head
 
     struct list_elem *e = list_begin(&ready_list);
     struct thread *t = list_entry(e, struct thread, elem);
 
-    if (new_priority < t->priority) {
+    if (target_priority < t->priority) {
         thread_yield();
     }
+}
+
+void thread_set_priority(int new_priority) {
+    thread_current()->priority = new_priority;
+    list_sort(&ready_list, comp_priority, NULL);
+    check_need_to_yield(new_priority);
 }
 
 /* Returns the current thread's priority. */
@@ -603,9 +609,9 @@ void find_thread_to_wake_up(void) {
 }
 /* Returns true if priority A is bigger or equal than priority B, false
    otherwise. */
-static bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
+bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
     const struct thread *a = list_entry(a_, struct thread, elem);
     const struct thread *b = list_entry(b_, struct thread, elem);
 
-    return a->priority >= b->priority;
+    return a->priority > b->priority;
 }
