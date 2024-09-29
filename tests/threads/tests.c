@@ -16,16 +16,16 @@ static const struct test tests[] = {
     {"alarm-zero", test_alarm_zero},                               // Pass
     {"alarm-negative", test_alarm_negative},                       // Pass
     {"priority-change", test_priority_change},                     // Pass
-    {"priority-donate-one", test_priority_donate_one},             // F
+    {"priority-donate-one", test_priority_donate_one},             // Pass
     {"priority-donate-multiple", test_priority_donate_multiple},   // F
     {"priority-donate-multiple2", test_priority_donate_multiple2}, // F
     {"priority-donate-nest", test_priority_donate_nest},           // F
-    {"priority-donate-sema", test_priority_donate_sema},           // F
+    {"priority-donate-sema", test_priority_donate_sema},           // Pass
     {"priority-donate-lower", test_priority_donate_lower},         // F
     {"priority-donate-chain", test_priority_donate_chain},         // F
     {"priority-fifo", test_priority_fifo},                         // Pass
     {"priority-preempt", test_priority_preempt},                   // Pass
-    {"priority-sema", test_priority_sema},                         // Pass
+    {"priority-sema", test_priority_sema},                         // F
     {"priority-condvar", test_priority_condvar},                   // F
     {"mlfqs-load-1", test_mlfqs_load_1},                           // F
     {"mlfqs-load-60", test_mlfqs_load_60},                         // F

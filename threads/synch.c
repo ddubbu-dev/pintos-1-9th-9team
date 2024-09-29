@@ -111,14 +111,13 @@ void sema_up(struct semaphore *sema) {
 
     old_level = intr_disable();
     if (!list_empty(&sema->waiters)) {
-        // TODO: multiple donation에서 sort가 필요하지 않을까?
-        // list_sort(&sema->waiters, comp_priority, NULL);
+        list_sort(&sema->waiters, comp_priority, NULL);
         thread_unblock(list_entry(list_pop_front(&sema->waiters), struct thread, elem)); // 대기 중인 스레드 깨우기 (TODO: 우선순위)
     }
 
     sema->value++; // 세마포어 값을 증가시키고,
-    intr_set_level(old_level);
     check_need_to_yield(thread_get_priority());
+    intr_set_level(old_level);
 }
 
 static void sema_test_helper(void *sema_);
@@ -189,7 +188,16 @@ void lock_acquire(struct lock *lock) { // lock 획득
     ASSERT(!intr_context());
     ASSERT(!lock_held_by_current_thread(lock));
 
-    sema_down(&lock->semaphore);
+    // lock < main < acquire1(31) < acquire2(32)
+    // acquire1(32) 로 기부받음
+
+    struct thread *curr = thread_current();
+    if (lock->holder != NULL && lock->holder->priority < curr->priority) {
+        lock->holder->priority = curr->priority;
+        list_insert_ordered(&(lock->holder->donations), &curr->d_elem, comp_priority, NULL);
+    }
+
+    sema_down(&lock->semaphore); // lock 사용 혹은 대기
     lock->holder = thread_current();
 }
 
@@ -220,6 +228,28 @@ bool lock_try_acquire(struct lock *lock) { // acquire 비블록킹 방식
 void lock_release(struct lock *lock) { // lock 해제
     ASSERT(lock != NULL);
     ASSERT(lock_held_by_current_thread(lock));
+
+    int is_updated = 0;
+
+    if (lock->holder && !list_empty(&(lock->holder->donations))) {
+        struct list_elem *poped_elem = list_pop_front(&(lock->holder->donations));
+        struct thread *poped_thread = list_entry(poped_elem, struct thread, d_elem);
+
+        list_remove(&poped_thread->elem); // wait list에서 제거
+        thread_unblock(poped_thread);
+
+        // 새로운 기부자의 우선순위 반영
+        if (lock->holder && !list_empty(&(lock->holder->donations))) {
+            struct thread *next_donator = list_entry(list_begin(&(lock->holder->donations)), struct thread, d_elem);
+            lock->holder->priority = next_donator->priority;
+            is_updated = 1;
+        }
+    }
+
+    // donations가 비어 있으면 원래 우선순위로 복원
+    if (!is_updated) {
+        lock->holder->priority = lock->holder->origin_priority;
+    }
 
     lock->holder = NULL;
     sema_up(&lock->semaphore); // 대기 중인 쓰레드 중 하나 깨움
