@@ -171,6 +171,7 @@ void thread_print_stats(void) { printf("Thread: %lld idle ticks, %lld kernel tic
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
 tid_t thread_create(const char *name, int priority, thread_func *function, void *aux) {
+    // printf("[%s] thread_create\n", name);
     struct thread *t;
     tid_t tid;
 
@@ -197,7 +198,13 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
     t->tf.eflags = FLAG_IF;
 
     /* Add to run queue. */
-    thread_unblock(t);
+
+    thread_unblock(t); // insert (new) t into ready_list
+
+    struct thread *curr = thread_current();
+    if (curr->priority < priority) {
+        thread_yield();
+    }
 
     return tid;
 }
@@ -224,6 +231,7 @@ void thread_block(void) {
    it may expect that it can atomically unblock a thread and
    update other data. */
 void thread_unblock(struct thread *t) {
+    // printf("[%s] thread_unblock\n", t->name);
     enum intr_level old_level;
 
     ASSERT(is_thread(t));
@@ -290,7 +298,17 @@ void thread_yield(void) {
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void thread_set_priority(int new_priority) { thread_current()->priority = new_priority; }
+void thread_set_priority(int new_priority) {
+    thread_current()->priority = new_priority;
+    list_sort(&ready_list, comp_priority, NULL);
+
+    struct list_elem *e = list_begin(&ready_list);
+    struct thread *t = list_entry(e, struct thread, elem);
+
+    if (new_priority < t->priority) {
+        thread_yield();
+    }
+}
 
 /* Returns the current thread's priority. */
 int thread_get_priority(void) { return thread_current()->priority; }
