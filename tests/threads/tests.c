@@ -16,7 +16,7 @@ static const struct test tests[] = {
     {"alarm-zero", test_alarm_zero},                               // Pass
     {"alarm-negative", test_alarm_negative},                       // Pass
     {"priority-change", test_priority_change},                     // Pass
-    {"priority-donate-one", test_priority_donate_one},             // F
+    {"priority-donate-one", test_priority_donate_one},             // Pass
     {"priority-donate-multiple", test_priority_donate_multiple},   // Pass
     {"priority-donate-multiple2", test_priority_donate_multiple2}, // Pass
     {"priority-donate-nest", test_priority_donate_nest},           // F

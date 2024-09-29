@@ -230,49 +230,28 @@ void lock_release(struct lock *lock) { // lock 해제
     ASSERT(lock != NULL);
     ASSERT(lock_held_by_current_thread(lock));
 
-    int is_updated = 0;
+    if (!list_empty(&(lock->holder->donations))) {
+        struct list_elem *d_e;
 
-    if (lock->holder && !list_empty(&(lock->holder->donations))) {
-        // d_elem 제거하고
-        // elem 제거하고
-
-        struct list donations = lock->holder->donations;
-        struct list_elem *d_e, *next_elem;
-
-        // 같은 lock 타입의 d_elem 찾기
-        for (d_e = list_begin(&donations); d_e != list_end(&donations);) {
+        for (d_e = list_begin(&(lock->holder->donations)); d_e != list_end(&(lock->holder->donations));) {
             struct thread *poped_thread = list_entry(d_e, struct thread, d_elem);
-            next_elem = d_e->next;
+            struct list_elem *next_e = d_e->next;
 
-            if (poped_thread->wait_on_lock == lock) {
+            if (poped_thread->wait_on_lock == lock) { // donation list에서 "전부" 제거
                 list_remove(d_e);
-                list_remove(&poped_thread->elem);
-                thread_unblock(poped_thread);
-                break;
+                // TODO: 왜 break 하지 않고 전부 제거하는거지?
             }
-
-            if (next_elem != NULL) {
-                d_e = next_elem;
-            } else {
-                break;
-            }
-        }
-
-        // struct list_elem *poped_elem = list_pop_front(&(lock->holder->donations));
-        // struct thread *poped_thread = list_entry(poped_elem, struct thread, d_elem);
-        // list_remove(&poped_thread->elem); // wait list에서 제거
-
-        // 새로운 기부자의 우선순위 반영
-        if (lock->holder && !list_empty(&(lock->holder->donations))) {
-            struct thread *next_donator = list_entry(list_begin(&(lock->holder->donations)), struct thread, d_elem);
-            lock->holder->priority = next_donator->priority;
-            is_updated = 1;
+            d_e = next_e;
         }
     }
 
-    // donations가 비어 있으면 원래 우선순위로 복원
-    if (!is_updated) {
+    if (list_empty(&(lock->holder->donations))) {
+        // donations가 비어 있으면 원래 우선순위로 복원
         lock->holder->priority = lock->holder->origin_priority;
+    } else {
+        // 새로운 기부자의 우선순위 반영
+        struct thread *next_donator = list_entry(list_begin(&(lock->holder->donations)), struct thread, d_elem);
+        lock->holder->priority = next_donator->priority;
     }
 
     lock->holder = NULL;
