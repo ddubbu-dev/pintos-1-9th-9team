@@ -7,6 +7,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include <debug.h>
+#include <list.h>
 #include <random.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -30,6 +31,8 @@ static struct list ready_list;
 /* List of processes in THREAD_READY state, that is, processes that
 are ready to run but not actually running. */
 static struct list sleep_list;
+/* prioirty list */
+static struct list greater_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -56,7 +59,6 @@ static unsigned thread_ticks; /* # of timer ticks since last yield. */
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
-
 static void kernel_thread(thread_func *, void *aux);
 
 static void idle(void *aux UNUSED);
@@ -107,6 +109,7 @@ void thread_init(void) {
     lock_init(&tid_lock);
     list_init(&ready_list);
     list_init(&sleep_list);
+    list_init(&greater_list);
     list_init(&destruction_req);
 
     /* Set up a thread structure for the running thread. */
@@ -183,7 +186,6 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
     /* Initialize thread. */
     init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
-    // t->wait_on_lock_ptr = aux;
 
     /* Call the kernel_thread if it scheduled.
      * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -226,14 +228,13 @@ void thread_block(void) {
    it may expect that it can atomically unblock a thread and
    update other data. */
 void thread_unblock(struct thread *t) {
-    // printf("[%s] thread_unblock\n", t->name);
     enum intr_level old_level;
 
     ASSERT(is_thread(t));
 
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
-    list_insert_ordered(&ready_list, &t->elem, comp_priority, NULL);
+    list_insert_ordered(&ready_list, &t->elem, comp_priority_by_elem, NULL);
     t->status = THREAD_READY;
     intr_set_level(old_level);
 }
@@ -287,33 +288,40 @@ void thread_yield(void) {
 
     old_level = intr_disable();
     if (curr != idle_thread)
-        list_insert_ordered(&ready_list, &curr->elem, comp_priority, NULL);
+        list_insert_ordered(&ready_list, &curr->elem, comp_priority_by_elem, NULL);
     do_schedule(THREAD_READY);
     intr_set_level(old_level);
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
-
 void check_need_to_yield() {
-    if (thread_current() == idle_thread)
-        return;
-    if (list_empty(&ready_list))
+    if (list_empty(&ready_list) || thread_current() == idle_thread || (intr_context()))
         return;
 
     struct thread *high_ready = list_entry(list_begin(&ready_list), struct thread, elem);
 
-    if (thread_get_priority() < high_ready->priority) {
+    if (thread_get_priority() < high_ready->priority) { // TODO: 없어도 되는 이유
         thread_yield();
     }
 }
 
+/* Sets the current thread's priority to NEW_PRIORITY.
+        현재 스레드의 우선순위를 새 우선순위로 설정 , 현재 스레드가 더 이상 가장 높은 우선 순위를 갖지 않으면 yield*/
 void thread_set_priority(int new_priority) {
-    thread_current()->priority = new_priority;
-    list_sort(&ready_list, comp_priority, NULL);
-    check_need_to_yield();
+    if (list_empty(&thread_current()->donations)) {
+        thread_current()->priority = new_priority;
+        check_need_to_yield();
+    }
+    // 만약 donations list가 비어있지 않다면
+    thread_current()->origin_priority = new_priority;
+
+    struct thread *head_thread = list_entry(list_begin(&ready_list), struct thread, elem);
+    // list_sort(&ready_list, comp_priority_by_elem, NULL);
+    if (thread_current()->priority < head_thread->priority)
+        thread_yield();
 }
 
-/* Returns the current thread's priority. */
+/* Returns the current thread's priority.
+        현재 스레드의 우선순위를 반환 , 우선 순위 기부가 있는 경우 더 높은 우선순위를 반환*/
 int thread_get_priority(void) { return thread_current()->priority; }
 
 /* Sets the current thread's nice value to NICE. */
@@ -603,7 +611,6 @@ void find_thread_to_wake_up(void) {
         if (timer_elapsed(t->wakeup_tick) >= 0) {
             e = list_remove(e);
             thread_unblock(t);
-            check_need_to_yield();
         } else {
             e = list_next(e);
         }
@@ -611,9 +618,16 @@ void find_thread_to_wake_up(void) {
 }
 /* Returns true if priority A is bigger or equal than priority B, false
    otherwise. */
-bool comp_priority(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
+bool comp_priority_by_elem(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
     const struct thread *a = list_entry(a_, struct thread, elem);
     const struct thread *b = list_entry(b_, struct thread, elem);
 
     return a->priority > b->priority;
+}
+
+// donations 리스트에 들어가는 d_elem을 priority 기준으로 정렬(내림차순)
+bool comp_priority_by_d_elem(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+    struct thread *ta = list_entry(a, struct thread, d_elem);
+    struct thread *tb = list_entry(b, struct thread, d_elem);
+    return ta->priority > tb->priority;
 }
