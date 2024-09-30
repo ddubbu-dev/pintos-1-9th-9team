@@ -91,9 +91,14 @@ struct thread {
     char name[16];             /* Name (for debugging purposes). */
     int64_t wakeup_tick;       /* Compare with global tick*/
     int priority;              /* Priority. */
+    int origin_priority;
+
+    struct lock *wait_on_lock; /* lock that it waits for */
+    struct list donations;     /* list of Donors */
+    struct list_elem d_elem;   /* List element for donations */
 
     /* Shared between thread.c and synch.c. */
-    struct list_elem elem; /* List element. */
+    struct list_elem elem; /* List element for ready/wait */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -146,5 +151,8 @@ void do_iret(struct intr_frame *tf);
 // ============================== 추가된 내용 ===========================
 void thread_sleep(int64_t ticks);
 void find_thread_to_wake_up();
+void check_need_to_yield();
+bool comp_priority_by_elem(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+bool comp_priority_by_d_elem(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 #endif /* threads/thread.h */
