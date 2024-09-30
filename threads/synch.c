@@ -344,8 +344,10 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(!intr_context());
     ASSERT(lock_held_by_current_thread(lock));
 
-    if (!list_empty(&cond->waiters)) // condition을 대기 중인 스레드 깨우기
+    if (!list_empty(&cond->waiters)) {
+        list_sort(&cond->waiters, comp_condvar_priority, NULL);
         sema_up(&list_entry(list_pop_front(&cond->waiters), struct semaphore_elem, elem)->semaphore);
+    }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -360,4 +362,17 @@ void cond_broadcast(struct condition *cond, struct lock *lock) { // 대기 중�
 
     while (!list_empty(&cond->waiters))
         cond_signal(cond, lock);
+}
+
+bool comp_condvar_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+    struct semaphore_elem *sema_elem_a = list_entry(a, struct semaphore_elem, elem);
+    struct semaphore_elem *sema_elem_b = list_entry(b, struct semaphore_elem, elem);
+
+    struct semaphore sema_a = sema_elem_a->semaphore;
+    struct semaphore sema_b = sema_elem_b->semaphore;
+
+    struct thread *t_a = list_entry(list_begin(&sema_a.waiters), struct thread, elem);
+    struct thread *t_b = list_entry(list_begin(&sema_b.waiters), struct thread, elem);
+
+    return t_a->priority > t_b->priority;
 }
