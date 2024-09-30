@@ -170,7 +170,6 @@ void thread_print_stats(void) { printf("Thread: %lld idle ticks, %lld kernel tic
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
 tid_t thread_create(const char *name, int priority, thread_func *function, void *aux) {
-    // printf("[%s] thread_create\n", name);
     struct thread *t;
     tid_t tid;
 
@@ -200,11 +199,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
     /* Add to run queue. */
 
     thread_unblock(t); // insert (new) t into ready_list
-
-    struct thread *curr = thread_current();
-    if (curr->priority < priority) {
-        thread_yield();
-    }
+    check_need_to_yield();
 
     return tid;
 }
@@ -299,14 +294,15 @@ void thread_yield(void) {
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 
-void check_need_to_yield(int target_priority) {
-    // [e.g] target_priority = thread_get_priority();
-    // current vs ready->head
+void check_need_to_yield() {
+    if (thread_current() == idle_thread)
+        return;
+    if (list_empty(&ready_list))
+        return;
 
-    struct list_elem *e = list_begin(&ready_list);
-    struct thread *t = list_entry(e, struct thread, elem);
+    struct thread *high_ready = list_entry(list_begin(&ready_list), struct thread, elem);
 
-    if (target_priority < t->priority) {
+    if (thread_get_priority() < high_ready->priority) {
         thread_yield();
     }
 }
@@ -314,7 +310,7 @@ void check_need_to_yield(int target_priority) {
 void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
     list_sort(&ready_list, comp_priority, NULL);
-    check_need_to_yield(new_priority);
+    check_need_to_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -607,6 +603,7 @@ void find_thread_to_wake_up(void) {
         if (timer_elapsed(t->wakeup_tick) >= 0) {
             e = list_remove(e);
             thread_unblock(t);
+            check_need_to_yield();
         } else {
             e = list_next(e);
         }

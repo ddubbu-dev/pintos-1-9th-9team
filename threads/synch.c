@@ -116,7 +116,6 @@ void sema_up(struct semaphore *sema) {
     }
 
     sema->value++; // 세마포어 값을 증가시키고,
-    check_need_to_yield(thread_get_priority());
     intr_set_level(old_level);
 }
 
