@@ -151,24 +151,6 @@ void thread_tick(void) {
         intr_yield_on_return();
 }
 
-/* if the current thread is not idle thread,
-    change the state of the caller thread to BLOCKED,
-    store the local tick to wake up,
-    update the global tick if necessary,
-    and call schedule() */
-/* when you manipulate thread list, disable interrupt! */
-void thread_sleep(int64_t ticks) {
-    struct thread *t = thread_current();
-
-    if (t != idle_thread) {
-        t->status = THREAD_BLOCKED;
-        t->wakeup_tick = ticks;
-        do_schedule(THREAD_BLOCKED);
-        list_push_back(&sleep_list, &t->elem);
-        // idle_ticks++;        // remind later
-    }
-}
-
 /* Prints thread statistics. */
 void thread_print_stats(void) { printf("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n", idle_ticks, kernel_ticks, user_ticks); }
 
@@ -568,33 +550,35 @@ static tid_t allocate_tid(void) {
 
 // ============================== 추가된 내용 ===========================
 
-/* (wake up) move the thread from the sleep list to the ready list */
-void sleeping_thread_wakeup(struct list_elem *elem_ptr) {
-    enum intr_level old_level;
-    old_level = intr_disable();
+/* if the current thread is not idle thread,
+    change the state of the caller thread to BLOCKED,
+    store the local tick to wake up,
+    update the global tick if necessary,
+    and call schedule() */
+/* when you manipulate thread list, disable interrupt! */
+void thread_sleep(int64_t ticks) {
+    struct thread *t = thread_current();
 
-    list_remove(elem_ptr); // 신기방기; list head 없어도 doubly linke list 라서 자체적으로 끊을 수 있음
-    list_push_back(&ready_list, elem_ptr);
-    struct thread *t = list_entry(elem_ptr, struct thread, elem);
-    t->status = THREAD_READY;
+    enum intr_level old_level = intr_disable();
 
+    if (t != idle_thread) {
+        t->wakeup_tick = ticks;
+        list_push_back(&sleep_list, &t->elem);
+        do_schedule(THREAD_BLOCKED);
+        // idle_ticks++;        //TODO: remind later
+    }
     intr_set_level(old_level);
 }
 
-/* The function that find the thread to wake up from sleep queue */
-void find_thread_to_wake_up() {
-    if (list_empty(&sleep_list)) {
-        return;
-    }
-
-    // [TODO] 현재는 head thread만 체크하지만, 내부에 min wakeup_tick 존재한다면 O(N) 탐색 필요할 수도
-    // 1) 정렬, head 바로 사용
-    // 2) 미정렬, list_insert_ordered 함수 및 min-tick thread 찾기
-    struct list_elem *elem_ptr = list_begin(&sleep_list); // Q. 꺼낼때는 block 안해도 되나?
-    struct thread *t = list_entry(elem_ptr, struct thread, elem);
-    int64_t wakeup_tick = t->wakeup_tick;
-    int64_t global_tick = timer_ticks();
-    if (wakeup_tick <= global_tick) { // wake up!!
-        sleeping_thread_wakeup(elem_ptr);
+void find_thread_to_wake_up(void) {
+    struct list_elem *e;
+    for (e = list_begin(&sleep_list); e != list_end(&sleep_list);) {
+        struct thread *t = list_entry(e, struct thread, elem);
+        if (timer_elapsed(t->wakeup_tick) >= 0) {
+            e = list_remove(e);
+            thread_unblock(t);
+        } else {
+            e = list_next(e);
+        }
     }
 }

@@ -105,12 +105,7 @@ void timer_print_stats(void) { printf("Timer: %" PRId64 " ticks\n", timer_ticks(
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
     thread_tick();
-
-    /* At every tick, check whether some thread must
-        wake up from sleep queue and call wake up function*/
-    int64_t ntest = 0;
-    thread_awake(ntest);
-    /* Remove sleep queue and insert it to the ready_list */
+    find_thread_to_wake_up();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
