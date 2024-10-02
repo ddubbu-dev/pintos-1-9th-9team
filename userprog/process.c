@@ -153,8 +153,8 @@ error:
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
-int process_exec(void *f_name) {
-    char *file_name = f_name;
+int process_exec(void *fname_n_args) {
+    char *file_name;
     bool success;
 
     /* We cannot use the intr_frame in the thread structure.
@@ -167,6 +167,19 @@ int process_exec(void *f_name) {
 
     /* We first kill the current context */
     process_cleanup();
+
+    /* parsing f_name & arguments */
+    char *token, *save_ptr;
+
+    printf("[process_exec] origin f_name: %s\n", fname_n_args);
+    printf(">> parse result: \n");
+
+    file_name = strtok_r(fname_n_args, " ", &save_ptr);
+    printf("file_name: %s\n", file_name);
+
+    for (token = strtok_r(save_ptr, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+        printf("[arg] %s\n", token);
+    }
 
     /* And then load the binary */
     success = load(file_name, &_if);
@@ -194,6 +207,10 @@ int process_wait(tid_t child_tid UNUSED) {
     /* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
      * XXX:       to add infinite loop here before
      * XXX:       implementing the process_wait. */
+
+    while (1) {
+    }
+
     return -1;
 }
 
