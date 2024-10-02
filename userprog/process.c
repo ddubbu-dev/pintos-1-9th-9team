@@ -41,10 +41,10 @@ tid_t process_create_initd(const char *file_name) {
 
     /* Make a copy of FILE_NAME.
      * Otherwise there's a race between the caller and load(). */
-    fn_copy = palloc_get_page(0);
+    fn_copy = palloc_get_page(0); // palloc_flags; !PAL_USER = kernel_pool
     if (fn_copy == NULL)
         return TID_ERROR;
-    strlcpy(fn_copy, file_name, PGSIZE);
+    strlcpy(fn_copy, file_name, PGSIZE); // 4KB - Q. 너무 크게 잡은거 아님?
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
@@ -68,6 +68,7 @@ static void initd(void *f_name) {
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
+// Q. 왜 thread_create를 하는걸까?
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED) {
     /* Clone current thread to new thread.*/
     return thread_create(name, PRI_DEFAULT, __do_fork, thread_current());
@@ -86,6 +87,7 @@ static bool duplicate_pte(uint64_t *pte, void *va, void *aux) {
     /* 1. TODO: If the parent_page is kernel page, then return immediately. */
 
     /* 2. Resolve VA from the parent's page map level 4. */
+    // virtual addr -> (by pml4 : 페이지 테이블) -> physical addr
     parent_page = pml4_get_page(parent->pml4, va);
 
     /* 3. TODO: Allocate new PAL_USER page for the child and set result to
@@ -97,7 +99,7 @@ static bool duplicate_pte(uint64_t *pte, void *va, void *aux) {
 
     /* 5. Add new page to child's page table at address VA with WRITABLE
      *    permission. */
-    if (!pml4_set_page(current->pml4, va, newpage, writable)) {
+    if (!pml4_set_page(current->pml4, va, newpage, writable)) { // Q. 내부 구현
         /* 6. TODO: if fail to insert page, do error handling. */
     }
     return true;
