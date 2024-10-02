@@ -238,38 +238,44 @@ bool lock_try_acquire(struct lock *lock) { // acquire 비블록킹 방식
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
    handler. */
-void lock_release(struct lock *lock) {
+void lock_release(struct lock *lock) { // lock 해제
     ASSERT(lock != NULL);
     ASSERT(lock_held_by_current_thread(lock));
 
-    if (!list_empty(&lock->holder->donations)) {
-        // 탐색을 위한 현재 donations 리스트에서 맨 앞 요소 확인
-        struct list_elem *front_elem = list_begin(&lock->holder->donations);
+    if (lock->holder && !list_empty(&(lock->holder->donations))) {
+        struct list_elem *d_e, *next_elem;
 
-        // 리스트 탐색
-        while (front_elem != list_end(&lock->holder->donations)) {
-            struct thread *front_thread = list_entry(front_elem, struct thread, d_elem);
+        for (d_e = list_begin(&lock->holder->donations); d_e != list_end(&lock->holder->donations);) {
+            struct thread *t = list_entry(d_e, struct thread, d_elem);
+            next_elem = d_e->next;
 
-            // 해당 락 소유 쓰레드 찾기
-            if (front_thread->wait_on_lock == lock) {
-                list_remove(&front_thread->d_elem);
-                front_thread->wait_on_lock = NULL;
+            if (t->wait_on_lock == lock) {
+                list_remove(d_e);
+                t->wait_on_lock = NULL;
+
+                list_remove(&t->elem); // wait list에서 제거
+                thread_unblock(t);     // ready list 등록
+                break;
             }
-            front_elem = list_next(front_elem);
+
+            if (next_elem != NULL) {
+                d_e = next_elem;
+            } else {
+                break;
+            }
         }
 
-        // donations list가 비어있지 않다면 list에 있는 가장 큰 우선순위로 락 소유 스레드에게 기부 한다.
-        if (!list_empty(&lock->holder->donations)) {
-            struct thread *next_thread = list_entry(list_front(&lock->holder->donations), struct thread, d_elem);
-            lock->holder->priority = next_thread->priority;
-        }
-        // 비어있으면 원래의 우선순위로 복귀
-        else
+        // 새로운 기부자의 우선순위 반영
+        if (!list_empty(&(lock->holder->donations))) {
+            struct thread *next_donator = list_entry(list_begin(&(lock->holder->donations)), struct thread, d_elem);
+            lock->holder->priority = next_donator->priority;
+        } else {
             lock->holder->priority = lock->holder->origin_priority;
+        }
     }
 
     lock->holder = NULL;
-    sema_up(&lock->semaphore);
+    sema_up(&lock->semaphore); // 대기 중인 쓰레드 중 하나 깨움
 }
 
 /* Returns true if the current thread holds LOCK, false
