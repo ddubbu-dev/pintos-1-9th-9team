@@ -151,9 +151,67 @@ error:
     thread_exit();
 }
 
+void argument_stack(char *fname_n_args, char **file_name, void **rsp) {
+    int cmd_str_len = 0;
+    char *token, *save_ptr;
+    const int MAX_STR_LEN = 100;
+
+    printf(">> parse result: \n");
+
+    *file_name = strtok_r(fname_n_args, " ", &save_ptr);
+    char **parsed_arr = (char **)malloc(MAX_STR_LEN * sizeof(char *));
+    parsed_arr[0] = (char *)malloc(MAX_STR_LEN);
+    strlcpy(parsed_arr[0], *file_name, MAX_STR_LEN);
+    int argvc = 1; // + file name
+    cmd_str_len += strnlen(*file_name, MAX_STR_LEN);
+
+    printf("file_name: %s\n", *file_name);
+
+    for (token = strtok_r(save_ptr, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+        parsed_arr[argvc] = (char *)malloc(MAX_STR_LEN);
+        strlcpy(parsed_arr[argvc], token, MAX_STR_LEN);
+        cmd_str_len += strnlen(parsed_arr[argvc], MAX_STR_LEN);
+        printf("[arg] %s\n", parsed_arr[argvc]);
+        argvc += 1;
+    }
+
+    // Set argc and argv
+    char **argv = malloc(argvc * sizeof(char *)); // Allocate memory for argv
+
+    // Store argument pointers in argv
+    for (int i = 0; i < argvc; i++) {
+        (*argv)[i] = parsed_arr[i]; // Store the address of each argument
+    }
+
+    int i, j;
+    for (i = argvc - 1; i >= 0; i--) {
+        *rsp = (void *)parsed_arr[i];                   // 인자의 주소를 rsp로 매핑
+        printf("[Stored in rsp] %s\n", (char *)(*rsp)); // 스택에 저장된 문자열 출력
+        *rsp -= strlen(parsed_arr[i]) + 1;              // 다음 주소로 이동 (널 종료 문자 포함)
+    }
+
+    int remain = cmd_str_len % 4; // word-align
+    for (int i = 4 - remain; i > 0; i--) {
+        *(*((char **)rsp)) = 0; // 0으로 값 설정
+        *rsp -= 1;
+    }
+
+    *rsp = argv;
+    *rsp -= 1;
+    *rsp = argvc;
+    *rsp -= 1;
+    *rsp = 0;
+    *rsp -= 1;
+
+    // hex_dump((uintptr_t)*rsp, (void *)*rsp, USER_STACK - (uintptr_t)*rsp, true);
+
+    // hex_dump(*rsp, *rsp, sizeof(*rsp), true);
+}
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int process_exec(void *fname_n_args) {
+    printf("[process_exec] origin f_name: %s\n", fname_n_args);
+
     char *file_name;
     bool success;
 
@@ -169,17 +227,8 @@ int process_exec(void *fname_n_args) {
     process_cleanup();
 
     /* parsing f_name & arguments */
-    char *token, *save_ptr;
-
-    printf("[process_exec] origin f_name: %s\n", fname_n_args);
-    printf(">> parse result: \n");
-
-    file_name = strtok_r(fname_n_args, " ", &save_ptr);
-    printf("file_name: %s\n", file_name);
-
-    for (token = strtok_r(save_ptr, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
-        printf("[arg] %s\n", token);
-    }
+    argument_stack(fname_n_args, &file_name, &_if.rsp);
+    hex_dump((uintptr_t)_if.rsp, (void *)_if.rsp, USER_STACK - (uintptr_t)_if.rsp, true);
 
     /* And then load the binary */
     success = load(file_name, &_if);
@@ -207,6 +256,10 @@ int process_wait(tid_t child_tid UNUSED) {
     /* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
      * XXX:       to add infinite loop here before
      * XXX:       implementing the process_wait. */
+
+    for (;;) {
+    }
+
     return -1;
 }
 
@@ -319,6 +372,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t 
  * and its initial stack pointer into *RSP.
  * Returns true if successful, false otherwise. */
 static bool load(const char *file_name, struct intr_frame *if_) {
+    printf("[load] %s\n", file_name);
     struct thread *t = thread_current();
     struct ELF ehdr;
     struct file *file = NULL;
