@@ -61,15 +61,13 @@ void syscall_handler(struct intr_frame *ifp) {
         halt();
         break;
     case SYS_EXIT:
-        int exit_status = argv[0];
-        exit(exit_status);
+        exit(argv[0]);
         break;
     case SYS_FORK:
         // fork();
         break;
     case SYS_EXEC:
-        char *file_name = argv[0];
-        exec(file_name);
+        exec(argv[0]);
         break;
     case SYS_WAIT:
         // wait();
