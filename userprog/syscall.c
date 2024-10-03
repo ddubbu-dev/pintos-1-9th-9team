@@ -54,13 +54,13 @@ void syscall_handler(struct intr_frame *ifp) {
     uint64_t argv[5];
     int sys_call_num = ifp->R.rax;
     printf("system call! [%d]\n", sys_call_num);
+    validate_n_update_argv(ifp, argv);
 
     switch (sys_call_num) {
     case SYS_HALT:
         halt();
         break;
     case SYS_EXIT:
-        validate_n_update_argv(ifp, argv);
         int exit_status = argv[0];
         exit(exit_status);
         break;
@@ -68,7 +68,6 @@ void syscall_handler(struct intr_frame *ifp) {
         // fork();
         break;
     case SYS_EXEC:
-        validate_n_update_argv(ifp, argv);
         char *file_name = argv[0];
         exec(file_name);
         break;
