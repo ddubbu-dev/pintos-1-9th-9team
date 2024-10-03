@@ -57,7 +57,7 @@ struct segment_descriptor64 {
 };
 
 #define SEG64(type, base, lim, dpl)                                                                                                                                                                    \
-    (struct segment_desc) { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff, type, 1, dpl, 1, (unsigned)(lim) >> 28, 0, 1, 0, 1, (unsigned)(base) >> 24 }
+    (struct segment_desc) { ((lim) >> 12) & 0xffff, (base)&0xffff, ((base) >> 16) & 0xff, type, 1, dpl, 1, (unsigned)(lim) >> 28, 0, 1, 0, 1, (unsigned)(base) >> 24 }
 
 static struct segment_desc gdt[SEL_CNT] = {
     [SEL_NULL >> 3] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -80,7 +80,7 @@ void gdt_init(void) {
     struct task_state *tss = tss_get();
 
     *tss_desc = (struct segment_descriptor64){.lim_15_0 = (uint64_t)(sizeof(struct task_state)) & 0xffff,
-                                              .base_15_0 = (uint64_t)(tss) & 0xffff,
+                                              .base_15_0 = (uint64_t)(tss)&0xffff,
                                               .base_23_16 = ((uint64_t)(tss) >> 16) & 0xff,
                                               .type = 0x9,
                                               .s = 0,
