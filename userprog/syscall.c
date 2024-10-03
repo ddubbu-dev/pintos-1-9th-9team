@@ -68,7 +68,9 @@ void syscall_handler(struct intr_frame *ifp) {
         // fork();
         break;
     case SYS_EXEC:
-        // exec();
+        validate_n_update_argv(ifp, argv);
+        char *file_name = argv[0];
+        exec(file_name);
         break;
     case SYS_WAIT:
         // wait();
@@ -113,8 +115,8 @@ void halt() { power_off(); }
 
 void exit(int exit_code) {
     struct thread *curr = thread_current();
-    printf("%s: exit(%d)", curr->name, exit_code);
+    printf("%s: exit(%d)\n", curr->name, exit_code);
     thread_exit();
 }
 
-// TODO: 함수 구현 필요
+int exec(const char *file) { return process_create_initd(file); }
