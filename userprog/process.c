@@ -164,13 +164,13 @@ void arg_parsing(char *fname_n_args, char **file_name, char **parsed_arr, int *a
 }
 
 void update_rsp(struct intr_frame *ifp, int argc, char **parsed_arr) {
-    printf("update_rsp\n");
+    printf("============== update_rsp ==============\n");
     char *argv[1 << 7]; // TODO: malloc으로 바꿔줘도 되는지
 
     for (int i = argc - 1; i >= 0; i--) {
         char *item = parsed_arr[i];
         int len = strlen(item) + 1;
-        printf("[item] %s\n", item);
+        printf("[parsed] %s\n", item);
         down_stack(ifp, len);
         memcpy(ifp->rsp, item, len);
         argv[i] = (char *)ifp->rsp;
@@ -233,8 +233,9 @@ int process_exec(void *fname_n_args) {
     /* after setup_stack, Update if.rsp */
     update_rsp(&_if, argc, parsed_arr);
     // 테스트 확인용
+    printf("============== hex_dump ==============\n");
     hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
-
+    printf("============== run_test ==============\n");
     /* If load failed, quit. */
     palloc_free_page(file_name);
     if (!success)
