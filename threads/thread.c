@@ -406,6 +406,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->origin_priority = priority; // read only
     t->wait_on_lock = NULL;
     list_init(&(t->donations));
+    list_init(&(t->children_process))
 
     t->magic = THREAD_MAGIC;
 }

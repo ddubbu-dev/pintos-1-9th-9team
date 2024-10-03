@@ -684,7 +684,7 @@ struct thread *get_child_process(pid_t pid) {
     struct thread *curr = thread_current();
     struct list_elem *e;
     for (e = list_begin(&(curr->children_process)); e != list_end(&(curr->children_process)); e = list_next(e)) {
-        struct thread *t = list_entry(e, struct thread, elem);
+        struct thread *t = list_entry(e, struct thread, c_elem);
         if (t->tid == pid)
             return t;
     }

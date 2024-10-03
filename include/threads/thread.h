@@ -5,7 +5,6 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-// #include <synch.h>
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -101,16 +100,13 @@ struct thread {
     /* Shared between thread.c and synch.c. */
     struct list_elem elem; /* List element for ready/wait */
 
-    /* Information of process*/
-    int parent_fd;              /* parent file discripter*/
-    struct list_elem c_elem;
-    struct list children_process;
-    bool memory_load;
-    bool process_terminated;    /* Fail = -1 */
-    struct semaphore *sema_wait;
-    struct semaphore *sema_load;
-    struct semaphore *sema_exit;
-    int child_status;
+    /* --------------Information of parent process---------------- */
+    struct list children;
+    struct semaphore *sema_wait; /* sema_down if children process running */
+
+    /* --------------Information of child process*---------------- */
+    struct list_elem c_elem;     /* List element for children */
+    struct semaphore *sema_exit; /* sema_up if children process terminated */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
