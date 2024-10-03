@@ -34,9 +34,79 @@ void syscall_init(void) {
     write_msr(MSR_SYSCALL_MASK, FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
+void check_address(void *addr) {
+    // TODO
+    /* 포인터가 가리키는 주소가 유저 영역의 주소인지 확인 */
+    /* 잘못된 접근일 경우 프로세스 종료 */
+}
+
+void get_argument(void *esp, int *arg, int cnt) {
+    // TODO
+    /* 유저 스택에 저장된 인자값들을 커널로 저장 */
+    /* 인자가 저장된 위치가 유저영역인지 확인 */
+}
+
 /* The main system call interface */
-void syscall_handler(struct intr_frame *f UNUSED) {
-    // TODO: Your implementation goes here.
+void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불리는거지?
+    // [ref] 한양대 자료 70p
     printf("system call!\n");
-    thread_exit();
+
+    // TODO: get stack stack pointer from interrupt frame
+    int sys_call_number = 0;
+    // TODO: get system call number from stack  parsing from rax (f->R.rax)
+    // TODO: 시스템 콜 핸들러에서 유저 스택 포인터(esp) 주소와 인자가 가리키는 주소(포인터)가 유저 영역인지 확인
+    // TODO: 유저 스택에 있는 인자들을 커널에 저장
+
+    switch (sys_call_number) {
+    case SYS_HALT:
+        halt();
+        break;
+
+    case SYS_EXIT:
+        exit();
+        break;
+    case SYS_FORK:
+        fork();
+        break;
+    case SYS_EXEC:
+        exec();
+        break;
+    case SYS_WAIT:
+        wait();
+        break;
+
+    case SYS_CREATE:
+        create();
+        break;
+    case SYS_REMOVE:
+        remove();
+        break;
+    case SYS_OPEN:
+        open();
+        break;
+    case SYS_FILESIZE:
+        filesize();
+        break;
+    case SYS_READ:
+        read();
+        break;
+    case SYS_WRITE:
+        write();
+        break;
+    case SYS_SEEK:
+        seek();
+        break;
+    case SYS_TELL:
+        tell();
+        break;
+    case SYS_CLOSE:
+        close();
+        break;
+    default:
+        printf("Unknown system call: %d\n", sys_call_number);
+        thread_exit();
+        break;
+    }
+
+    // TODO: 시스템 콜의 함수의 리턴 값은 인터럽트 프레임의 eax에 저장
 }
