@@ -74,7 +74,7 @@ void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불�
         // exec();
         break;
     case SYS_WAIT:
-        // wait();
+        wait(f->R.rdi);
         break;
     case SYS_CREATE:
         // create();
@@ -115,3 +115,4 @@ void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불�
 void halt() { power_off(); }
 
 // TODO: 함수 구현 필요
+int wait(pid_t tid) { return process_wait(tid); }

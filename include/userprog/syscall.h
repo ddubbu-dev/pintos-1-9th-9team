@@ -1,12 +1,14 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
 
+typedef int pid_t;
+
 void syscall_init(void);
 void halt(void);
 void exit(int status);
 int fork(const char *thread_name);
 int exec(const char *file);
-int wait(pid_t);
+int wait(pid_t pid);
 int create(const char *file, unsigned initial_size);
 int remove(const char *file);
 int open(const char *file);
