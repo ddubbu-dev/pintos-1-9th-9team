@@ -151,11 +151,67 @@ error:
     thread_exit();
 }
 
+void down_stack(struct intr_frame *ifp, int nbyte) { ifp->rsp -= nbyte; }
+
+void arg_parsing(char *fname_n_args, char **file_name, char **parsed_arr, int *argc) {
+    char *token, *save_ptr;
+
+    for (token = strtok_r(fname_n_args, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+        parsed_arr[(*argc)++] = token;
+    }
+
+    *file_name = parsed_arr[0];
+}
+
+void update_rsp(struct intr_frame *ifp, int argc, char **parsed_arr) {
+    printf("update_rsp\n");
+    char *argv[1 << 7]; // TODO: malloc으로 바꿔줘도 되는지
+
+    for (int i = argc - 1; i >= 0; i--) {
+        char *item = parsed_arr[i];
+        int len = strlen(item) + 1;
+        printf("[item] %s\n", item);
+        down_stack(ifp, len);
+        memcpy(ifp->rsp, item, len);
+        argv[i] = (char *)ifp->rsp;
+    }
+
+    // word-align
+    const int WORD_ALIGN = 8; // TODO: Introduction과 달리 4가 아닌이유
+    if (ifp->rsp % WORD_ALIGN != 0) {
+        int padding = ifp->rsp % WORD_ALIGN;
+        down_stack(ifp, padding);
+        memset(ifp->rsp, 0, padding);
+    }
+
+    // The null pointer sentinel ensures that argv[argc] is a null pointer
+    down_stack(ifp, WORD_ALIGN);
+    memset(ifp->rsp, 0, WORD_ALIGN);
+
+    // Update rsp
+    for (int i = argc - 1; i >= 0; i--) {
+        down_stack(ifp, WORD_ALIGN);
+        memcpy(ifp->rsp, &argv[i], WORD_ALIGN);
+    }
+
+    // fake "return address"
+    down_stack(ifp, WORD_ALIGN);
+    memset(ifp->rsp, 0, WORD_ALIGN);
+
+    // Update argc, argv
+    ifp->R.rdi = argc;
+    ifp->R.rsi = ifp->rsp + WORD_ALIGN;
+}
+
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
-int process_exec(void *f_name) {
-    char *file_name = f_name;
+int process_exec(void *fname_n_args) {
+    char *file_name;
     bool success;
+    int argc = 0;
+
+    const int BUF_MAX = 100;
+    char *parsed_arr[BUF_MAX];
 
     /* We cannot use the intr_frame in the thread structure.
      * This is because when current thread rescheduled,
@@ -168,8 +224,16 @@ int process_exec(void *f_name) {
     /* We first kill the current context */
     process_cleanup();
 
+    /* Parsing f_name & arguments */
+    arg_parsing(fname_n_args, &file_name, parsed_arr, &argc);
+
     /* And then load the binary */
     success = load(file_name, &_if);
+
+    /* after setup_stack, Update if.rsp */
+    update_rsp(&_if, argc, parsed_arr);
+    // 테스트 확인용
+    hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
@@ -194,6 +258,10 @@ int process_wait(tid_t child_tid UNUSED) {
     /* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
      * XXX:       to add infinite loop here before
      * XXX:       implementing the process_wait. */
+
+    for (int i = 0; i < 10000000000; i++) {
+    }
+
     return -1;
 }
 
