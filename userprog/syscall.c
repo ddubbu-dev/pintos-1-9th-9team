@@ -111,6 +111,10 @@ void syscall_handler(struct intr_frame *ifp) {
 
 void halt() { power_off(); }
 
-void exit(int exit_code) {}
+void exit(int exit_code) {
+    struct thread *curr = thread_current();
+    printf("%s: exit(%d)", curr->name, exit_code);
+    thread_exit();
+}
 
 // TODO: 함수 구현 필요
