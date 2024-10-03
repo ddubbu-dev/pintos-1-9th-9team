@@ -57,50 +57,51 @@ void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불�
     // TODO: 시스템 콜 핸들러에서 유저 스택 포인터(esp) 주소와 인자가 가리키는 주소(포인터)가 유저 영역인지 확인
     // TODO: 유저 스택에 있는 인자들을 커널에 저장
 
+    int exit_status = 0; // TODO
+
     switch (sys_call_number) {
     case SYS_HALT:
         halt();
         break;
 
     case SYS_EXIT:
-        exit();
+        // exit(exit_status);
         break;
     case SYS_FORK:
-        fork();
+        // fork();
         break;
     case SYS_EXEC:
-        exec();
+        // exec();
         break;
     case SYS_WAIT:
-        wait();
+        // wait();
         break;
-
     case SYS_CREATE:
-        create();
+        // create();
         break;
     case SYS_REMOVE:
-        remove();
+        // remove();
         break;
     case SYS_OPEN:
-        open();
+        // open();
         break;
     case SYS_FILESIZE:
-        filesize();
+        // filesize();
         break;
     case SYS_READ:
-        read();
+        // read();
         break;
     case SYS_WRITE:
-        write();
+        // write();
         break;
     case SYS_SEEK:
-        seek();
+        // seek();
         break;
     case SYS_TELL:
-        tell();
+        // tell();
         break;
     case SYS_CLOSE:
-        close();
+        // close();
         break;
     default:
         printf("Unknown system call: %d\n", sys_call_number);
@@ -110,3 +111,7 @@ void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불�
 
     // TODO: 시스템 콜의 함수의 리턴 값은 인터럽트 프레임의 eax에 저장
 }
+
+void halt() { power_off(); }
+
+// TODO: 함수 구현 필요
