@@ -9,6 +9,7 @@
 #include "userprog/gdt.h"
 #include "userprog/process.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 
 void syscall_entry(void);
@@ -78,7 +79,7 @@ void syscall_handler(struct intr_frame *ifp) {
         wait(argv[0]);
         break;
     case SYS_CREATE:
-        create(argv[0], argv[1]);
+        ifp->R.rax = create(argv[0], argv[1]);
         break;
     case SYS_REMOVE:
         remove(argv[0]);
@@ -126,7 +127,12 @@ int wait(pid_t tid) { return process_wait(tid); }
 int exec(const char *file) { return process_create_initd(file); }
 
 // ============== FILE SYSTEM ==============
-int create(const char *file, unsigned initial_size) { return filesys_create(file, initial_size); }
+int create(const char *file, unsigned initial_size) {
+    if (strlen(file) == 0)
+        return 0;
+
+    return filesys_create(file, initial_size);
+}
 
 int remove(const char *file) { return filesys_remove(file); }
 
