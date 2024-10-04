@@ -1,10 +1,13 @@
 #include "userprog/syscall.h"
+#include "devices/input.h"
+#include "filesys/file.h"
 #include "intrinsic.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/loader.h"
 #include "threads/thread.h"
 #include "userprog/gdt.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 
@@ -76,31 +79,31 @@ void syscall_handler(struct intr_frame *ifp) {
         wait(argv[0]);
         break;
     case SYS_CREATE:
-        // create();
+        create(argv[0], argv[1]);
         break;
     case SYS_REMOVE:
-        // remove();
+        remove(argv[0]);
         break;
     case SYS_OPEN:
-        // open();
+        open(argv[0]);
         break;
     case SYS_FILESIZE:
-        // filesize();
+        filesize(argv[0]);
         break;
     case SYS_READ:
-        // read();
+        read(argv[0], argv[1], argv[2]);
         break;
     case SYS_WRITE:
-        // write();
+        write(argv[0], argv[1], argv[2]);
         break;
     case SYS_SEEK:
-        // seek();
+        seek(argv[0], argv[1]);
         break;
     case SYS_TELL:
-        // tell();
+        tell(argv[0]);
         break;
     case SYS_CLOSE:
-        // close();
+        close(argv[0]);
         break;
     default:
         printf("Unknown system call: %d\n", sys_call_num);
@@ -111,7 +114,6 @@ void syscall_handler(struct intr_frame *ifp) {
     // TODO: 시스템 콜의 함수의 리턴 값은 인터럽트 프레임의 eax에 저장
 }
 
-// TODO: 함수 구현 필요
 void halt() { power_off(); }
 
 void exit(int exit_code) {
@@ -123,3 +125,51 @@ void exit(int exit_code) {
 int wait(pid_t tid) { return process_wait(tid); }
 
 int exec(const char *file) { return process_create_initd(file); }
+
+// ============== FILE SYSTEM ==============
+int create(const char *file, unsigned initial_size) { return filesys_create(file, initial_size); }
+
+int remove(const char *file) { return filesys_remove(file); }
+
+int open(const char *file) {
+    struct file *fp = filesys_open(file);
+    return process_add_file(fp);
+}
+
+int filesize(int fd) {
+    struct file *fp = process_get_file(fd);
+    return file_length(fp);
+}
+
+int read(int fd, void *buffer, unsigned length) {
+    if (fd == 0) {
+        return input_getc();
+    }
+
+    struct file *fp = process_get_file(fd);
+    return file_read(fd, buffer, length);
+}
+
+int write(int fd, const void *buffer, unsigned length) {
+    if (fd == 1) {
+        putbuf(buffer, length);
+    }
+    struct file *fp = process_get_file(fd);
+
+    return file_write(fp, buffer, length);
+}
+
+void seek(int fd, unsigned position) {
+    struct file *fp = process_get_file(fd);
+    file_seek(fp, position);
+}
+
+unsigned tell(int fd) {
+    struct file *fp = process_get_file(fd);
+    return file_tell(fd);
+}
+
+void close(int fd) {
+    struct file *fp = process_get_file(fd);
+    file_close(fp);
+}
