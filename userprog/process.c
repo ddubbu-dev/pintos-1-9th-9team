@@ -242,6 +242,7 @@ int process_exec(void *fname_n_args) {
 
     /* Start switched process. */
     do_iret(&_if);
+    sema_up(&(thread_current()->sema_wait));
     NOT_REACHED();
 }
 
@@ -258,11 +259,20 @@ int process_wait(tid_t child_tid UNUSED) {
     /* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
      * XXX:       to add infinite loop here before
      * XXX:       implementing the process_wait. */
+    struct thread *child_process = get_child_process(child_tid);
+    if (child_process == NULL)
+        return -1;
 
-    for (int i = 0; i < 10000000000; i++) {
-    }
+    /* Wait until the child process is terminated.
+     * (sema_up when child process call process_exit) */
+    sema_down(&(child_process->sema_wait));
+    /* Wait for the signal from sema_wait that notifies when
+     * the child process has terminated, delete the current thread's children_list */
+    list_remove(&(child_process->c_elem));
+    /* Send a signal to the child so that it can fully terminate and scheduling can continue */
+    // TODO : sema_up(&(child_process->sema_exit));
 
-    return -1;
+    return child_process->status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -272,7 +282,7 @@ void process_exit(void) {
      * TODO: Implement process termination message (see
      * TODO: project2/process_termination.html).
      * TODO: We recommend you to implement process resource cleanup here. */
-
+    sema_up(&curr->sema_wait);
     process_cleanup();
 }
 
@@ -669,3 +679,43 @@ static bool setup_stack(struct intr_frame *if_) {
     return success;
 }
 #endif /* VM */
+
+//////////////////////////
+struct thread *get_child_process(pid_t pid) {
+    struct thread *curr = thread_current();
+    struct list_elem *e;
+    for (e = list_begin(&(curr->children)); e != list_end(&(curr->children)); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, c_elem);
+        if (t->tid == pid)
+            return t;
+    }
+    return NULL;
+}
+
+int process_add_file(struct file *f) {
+    /* 파일 객체에 대한 파일 디스크립터 생성 */
+    struct thread *curr = thread_current();
+    int fd = curr->fdt_last_idx + 1;
+    if (fd > FD_MAX) {
+        printf("TODO: 에러처리 or 빈 곳 찾아서 리턴\n");
+        return -1;
+    }
+
+    curr->fdt[++curr->fdt_last_idx] = f;
+    return curr->fdt_last_idx;
+}
+
+struct file *process_get_file(int fd) {
+    /* 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴 */
+    struct thread *curr = thread_current();
+
+    return curr->fdt[fd];
+}
+
+void process_close_file(int fd) {
+    /* 파일 디스크립터에 해당하는 파일을 닫고 해당 엔트리 초기화 */
+    struct thread *curr = thread_current();
+    struct file *fp = curr->fdt[fd];
+    file_close(fp);
+    curr->fdt[fd] = NULL;
+}

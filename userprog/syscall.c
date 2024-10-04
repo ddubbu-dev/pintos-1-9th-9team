@@ -71,7 +71,7 @@ void syscall_handler(struct intr_frame *ifp) {
         exec(argv[0]);
         break;
     case SYS_WAIT:
-        // wait();
+        wait(argv[0]);
         break;
     case SYS_CREATE:
         // create();
@@ -109,6 +109,7 @@ void syscall_handler(struct intr_frame *ifp) {
     // TODO: 시스템 콜의 함수의 리턴 값은 인터럽트 프레임의 eax에 저장
 }
 
+// TODO: 함수 구현 필요
 void halt() { power_off(); }
 
 void exit(int exit_code) {
@@ -116,6 +117,8 @@ void exit(int exit_code) {
     printf("%s: exit(%d)\n", curr->name, exit_code);
     thread_exit();
 }
+
+int wait(pid_t tid) { return process_wait(tid); }
 
 int exec(const char *file) { return process_create_initd(file); }
 
