@@ -164,13 +164,13 @@ void arg_parsing(char *fname_n_args, char **file_name, char **parsed_arr, int *a
 }
 
 void update_rsp(struct intr_frame *ifp, int argc, char **parsed_arr) {
-    printf("update_rsp\n");
+    printf("============== update_rsp ==============\n");
     char *argv[1 << 7]; // TODO: malloc으로 바꿔줘도 되는지
 
     for (int i = argc - 1; i >= 0; i--) {
         char *item = parsed_arr[i];
         int len = strlen(item) + 1;
-        printf("[item] %s\n", item);
+        printf("[parsed] %s\n", item);
         down_stack(ifp, len);
         memcpy(ifp->rsp, item, len);
         argv[i] = (char *)ifp->rsp;
@@ -233,8 +233,9 @@ int process_exec(void *fname_n_args) {
     /* after setup_stack, Update if.rsp */
     update_rsp(&_if, argc, parsed_arr);
     // 테스트 확인용
+    printf("============== hex_dump ==============\n");
     hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
-
+    printf("============== run_test ==============\n");
     /* If load failed, quit. */
     palloc_free_page(file_name);
     if (!success)
@@ -242,6 +243,7 @@ int process_exec(void *fname_n_args) {
 
     /* Start switched process. */
     do_iret(&_if);
+    sema_up(&(thread_current()->sema_wait));
     NOT_REACHED();
 }
 
@@ -258,11 +260,20 @@ int process_wait(tid_t child_tid UNUSED) {
     /* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
      * XXX:       to add infinite loop here before
      * XXX:       implementing the process_wait. */
+    struct thread *child_process = get_child_process(child_tid);
+    if (child_process == NULL)
+        return -1;
 
-    for (int i = 0; i < 10000000000; i++) {
-    }
+    /* Wait until the child process is terminated.
+     * (sema_up when child process call process_exit) */
+    sema_down(&(child_process->sema_wait));
+    /* Wait for the signal from sema_wait that notifies when
+     * the child process has terminated, delete the current thread's children_list */
+    list_remove(&(child_process->c_elem));
+    /* Send a signal to the child so that it can fully terminate and scheduling can continue */
+    // TODO : sema_up(&(child_process->sema_exit));
 
-    return -1;
+    return child_process->status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -272,7 +283,7 @@ void process_exit(void) {
      * TODO: Implement process termination message (see
      * TODO: project2/process_termination.html).
      * TODO: We recommend you to implement process resource cleanup here. */
-
+    sema_up(&curr->sema_wait);
     process_cleanup();
 }
 
@@ -669,3 +680,15 @@ static bool setup_stack(struct intr_frame *if_) {
     return success;
 }
 #endif /* VM */
+
+//////////////////////////
+struct thread *get_child_process(pid_t pid) {
+    struct thread *curr = thread_current();
+    struct list_elem *e;
+    for (e = list_begin(&(curr->children)); e != list_end(&(curr->children)); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, c_elem);
+        if (t->tid == pid)
+            return t;
+    }
+    return NULL;
+}
