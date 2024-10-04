@@ -1,6 +1,14 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
 
+#if defined(USERPROG) || defined(FILESYS) || defined(VM)
+#define dev_printf(...)                                                                                                                                                                                \
+    do {                                                                                                                                                                                               \
+    } while (0)
+#else
+#define dev_printf(...) printf(__VA_ARGS__)
+#endif
+
 typedef int pid_t;
 
 void syscall_init(void);
