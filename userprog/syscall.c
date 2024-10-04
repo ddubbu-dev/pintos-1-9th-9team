@@ -34,44 +34,43 @@ void syscall_init(void) {
     write_msr(MSR_SYSCALL_MASK, FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
-void check_address(void *addr) {
-    // TODO
-    /* 포인터가 가리키는 주소가 유저 영역의 주소인지 확인 */
-    /* 잘못된 접근일 경우 프로세스 종료 */
-}
+void validate_n_update_argv(struct intr_frame *ifp, uint64_t *argv) {
+    // TODO: 시스템 콜 핸들러에서 유저 스택 포인터(rsp) 주소와 인자가 가리키는 주소(포인터)가 유저 영역인지 확인
+    printf("============== check_addr ==============\n");
+    argv[0] = ifp->R.rdi;
+    argv[1] = ifp->R.rsi;
+    argv[2] = ifp->R.rdx;
+    argv[3] = ifp->R.rcx;
+    argv[4] = ifp->R.r8;
 
-void get_argument(void *esp, int *arg, int cnt) {
-    // TODO
-    /* 유저 스택에 저장된 인자값들을 커널로 저장 */
-    /* 인자가 저장된 위치가 유저영역인지 확인 */
+    for (int i = 0; i < 5; i++) {
+        printf("argv[%d]: %llu\n", i, argv[i]);
+    }
+    printf("============== result ==============\n");
 }
 
 /* The main system call interface */
-void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불리는거지?
-    // [ref] 한양대 자료 70p
-    printf("system call!\n");
+void syscall_handler(struct intr_frame *ifp) {
+    uint64_t argv[5];
+    int sys_call_num = ifp->R.rax;
+    printf("system call! [%d]\n", sys_call_num);
 
-    // TODO: get stack stack pointer from interrupt frame
-    int sys_call_number = 0;
-    // TODO: get system call number from stack  parsing from rax (f->R.rax)
-    // TODO: 시스템 콜 핸들러에서 유저 스택 포인터(esp) 주소와 인자가 가리키는 주소(포인터)가 유저 영역인지 확인
-    // TODO: 유저 스택에 있는 인자들을 커널에 저장
-
-    int exit_status = 0; // TODO
-
-    switch (sys_call_number) {
+    switch (sys_call_num) {
     case SYS_HALT:
         halt();
         break;
-
     case SYS_EXIT:
-        // exit(exit_status);
+        validate_n_update_argv(ifp, argv);
+        int exit_status = argv[0];
+        exit(exit_status);
         break;
     case SYS_FORK:
         // fork();
         break;
     case SYS_EXEC:
-        // exec();
+        validate_n_update_argv(ifp, argv);
+        char *file_name = argv[0];
+        exec(file_name);
         break;
     case SYS_WAIT:
         // wait();
@@ -104,7 +103,7 @@ void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불�
         // close();
         break;
     default:
-        printf("Unknown system call: %d\n", sys_call_number);
+        printf("Unknown system call: %d\n", sys_call_num);
         thread_exit();
         break;
     }
@@ -114,4 +113,10 @@ void syscall_handler(struct intr_frame *f UNUSED) { // Q. 이건 어디서 불�
 
 void halt() { power_off(); }
 
-// TODO: 함수 구현 필요
+void exit(int exit_code) {
+    struct thread *curr = thread_current();
+    printf("%s: exit(%d)\n", curr->name, exit_code);
+    thread_exit();
+}
+
+int exec(const char *file) { return process_create_initd(file); }
