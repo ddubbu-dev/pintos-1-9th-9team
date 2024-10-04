@@ -693,8 +693,30 @@ struct thread *get_child_process(pid_t pid) {
     return NULL;
 }
 
-int process_add_file(struct file *f) { /* 파일 객체에 대한 파일 디스크립터 생성 */ }
+int process_add_file(struct file *f) {
+    /* 파일 객체에 대한 파일 디스크립터 생성 */
+    struct thread *curr = thread_current();
+    int fd = curr->fdt_last_idx + 1;
+    if (fd > FD_MAX) {
+        printf("TODO: 에러처리 or 빈 곳 찾아서 리턴\n");
+        return -1;
+    }
 
-struct file *process_get_file(int fd) { /* 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴 */ }
+    curr->fdt[++curr->fdt_last_idx] = f;
+    return curr->fdt_last_idx;
+}
 
-void process_close_file(int fd) { /* 파일 디스크립터에 해당하는 파일을 닫고 해당 엔트리 초기화 */ }
+struct file *process_get_file(int fd) {
+    /* 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴 */
+    struct thread *curr = thread_current();
+
+    return curr->fdt[fd];
+}
+
+void process_close_file(int fd) {
+    /* 파일 디스크립터에 해당하는 파일을 닫고 해당 엔트리 초기화 */
+    struct thread *curr = thread_current();
+    struct file *fp = curr->fdt[fd];
+    file_close(fp);
+    curr->fdt[fd] = NULL;
+}

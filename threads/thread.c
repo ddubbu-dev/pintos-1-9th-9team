@@ -408,6 +408,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     // sema_init(&(t->sema_exit), 0);
     list_init(&(t->donations));
     list_init(&(t->children));
+    t->fdt_last_idx = 1; // 0: STDIN, 1: STDOUT
 
     t->magic = THREAD_MAGIC;
 }

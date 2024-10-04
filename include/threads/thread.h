@@ -28,6 +28,9 @@ typedef int tid_t;
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63     /* Highest priority. */
 
+/* File System Constants */
+#define FD_MAX 63
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -110,7 +113,8 @@ struct thread {
     struct semaphore sema_exit; /* sema_up if children process terminated */
 
     /* Manage File System */
-    struct file *fdt[64];
+    struct file *fdt[FD_MAX + 1];
+
     int fdt_last_idx;
 
 #ifdef USERPROG
