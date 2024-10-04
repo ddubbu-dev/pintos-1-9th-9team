@@ -325,8 +325,7 @@ void thread_set_priority(int new_priority) {
 int thread_get_priority(void) { return thread_current()->priority; }
 
 /* Sets the current thread's nice value to NICE. */
-void thread_set_nice(int nice UNUSED) { /* TODO: Your implementation goes here */
-}
+void thread_set_nice(int nice UNUSED) { /* TODO: Your implementation goes here */ }
 
 /* Returns the current thread's nice value. */
 int thread_get_nice(void) {
@@ -406,6 +405,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->origin_priority = priority; // read only
     t->wait_on_lock = NULL;
     list_init(&(t->donations));
+    list_init(&(t->children));
 
     t->magic = THREAD_MAGIC;
 }
