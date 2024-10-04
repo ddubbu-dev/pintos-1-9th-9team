@@ -57,13 +57,13 @@ void syscall_handler(struct intr_frame *ifp) {
     uint64_t argv[5];
     int sys_call_num = ifp->R.rax;
     printf("system call! [%d]\n", sys_call_num);
+    validate_n_update_argv(ifp, argv);
 
     switch (sys_call_num) {
     case SYS_HALT:
         halt();
         break;
     case SYS_EXIT:
-        validate_n_update_argv(ifp, argv);
         int exit_status = argv[0];
         exit(exit_status);
         break;
@@ -71,7 +71,6 @@ void syscall_handler(struct intr_frame *ifp) {
         // fork();
         break;
     case SYS_EXEC:
-        validate_n_update_argv(ifp, argv);
         char *file_name = argv[0];
         exec(file_name);
         break;
@@ -155,8 +154,12 @@ int write(int fd, const void *buffer, unsigned length) {
         putbuf(buffer, length);
     }
     struct file *fp = process_get_file(fd);
-
-    return file_write(fp, buffer, length);
+    // enum intr_level old_level = intr_disable();
+    int written_n = file_write(fp, buffer, length);
+    printf("written_n: %d", written_n);
+    // intr_set_level(old_level);
+    // printf("buffer: %s length: %d\n", buffer, length);
+    return written_n;
 }
 
 void seek(int fd, unsigned position) {
