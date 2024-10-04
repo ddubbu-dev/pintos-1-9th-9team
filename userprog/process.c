@@ -692,3 +692,9 @@ struct thread *get_child_process(pid_t pid) {
     }
     return NULL;
 }
+
+int process_add_file(struct file *f) { /* 파일 객체에 대한 파일 디스크립터 생성 */ }
+
+struct file *process_get_file(int fd) { /* 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴 */ }
+
+void process_close_file(int fd) { /* 파일 디스크립터에 해당하는 파일을 닫고 해당 엔트리 초기화 */ }

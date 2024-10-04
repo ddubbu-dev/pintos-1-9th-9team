@@ -109,6 +109,10 @@ struct thread {
     struct list_elem c_elem;    /* List element for children */
     struct semaphore sema_exit; /* sema_up if children process terminated */
 
+    /* Manage File System */
+    struct file *fdt[64];
+    int fdt_last_idx;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint64_t *pml4; /* Page map level 4 */
