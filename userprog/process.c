@@ -35,21 +35,22 @@ static void process_init(void) { struct thread *current = thread_current(); }
  * before process_create_initd() returns. Returns the initd's
  * thread id, or TID_ERROR if the thread cannot be created.
  * Notice that THIS SHOULD BE CALLED ONCE. */
-tid_t process_create_initd(const char *file_name) {
-    char *fn_copy;
+tid_t process_create_initd(const char *fname_n_args) {
+    char *copied_args, *token, *save_ptr;
     tid_t tid;
 
     /* Make a copy of FILE_NAME.
      * Otherwise there's a race between the caller and load(). */
-    fn_copy = palloc_get_page(0); // palloc_flags; !PAL_USER = kernel_pool
-    if (fn_copy == NULL)
+    copied_args = palloc_get_page(0); // palloc_flags; !PAL_USER = kernel_pool
+    if (copied_args == NULL)
         return TID_ERROR;
-    strlcpy(fn_copy, file_name, PGSIZE); // 4KB - Q. 너무 크게 잡은거 아님?
+    strlcpy(copied_args, fname_n_args, PGSIZE); // 4KB - Q. 너무 크게 잡은거 아님?
+    token = strtok_r(fname_n_args, " ", &save_ptr);
 
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
+    tid = thread_create(token, PRI_DEFAULT, initd, copied_args);
     if (tid == TID_ERROR)
-        palloc_free_page(fn_copy);
+        palloc_free_page(copied_args);
     return tid;
 }
 
