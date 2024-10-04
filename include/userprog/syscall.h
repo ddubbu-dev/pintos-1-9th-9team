@@ -5,7 +5,7 @@ typedef int pid_t;
 
 void syscall_init(void);
 void halt(void);
-void exit(int status);
+void exit(int exit_code);
 int fork(const char *thread_name);
 int exec(const char *file);
 int wait(pid_t pid);
