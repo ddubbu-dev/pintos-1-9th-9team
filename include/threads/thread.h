@@ -2,6 +2,7 @@
 #define THREADS_THREAD_H
 
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -102,11 +103,11 @@ struct thread {
 
     /* --------------Information of parent process---------------- */
     struct list children;
-    struct semaphore *sema_wait; /* sema_down if children process running */
+    struct semaphore sema_wait; /* sema_down if children process running */
 
     /* --------------Information of child process*---------------- */
-    struct list_elem c_elem;     /* List element for children */
-    struct semaphore *sema_exit; /* sema_up if children process terminated */
+    struct list_elem c_elem;    /* List element for children */
+    struct semaphore sema_exit; /* sema_up if children process terminated */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

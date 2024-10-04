@@ -73,7 +73,7 @@ void syscall_handler(struct intr_frame *ifp) {
         exec(file_name);
         break;
     case SYS_WAIT:
-        wait(f->R.rdi);
+        wait(argv[0]);
         break;
     case SYS_CREATE:
         // create();

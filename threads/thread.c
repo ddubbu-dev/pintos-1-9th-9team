@@ -4,7 +4,6 @@
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
-#include "threads/synch.h"
 #include "threads/vaddr.h"
 #include <debug.h>
 #include <list.h>
@@ -198,6 +197,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
     t->tf.cs = SEL_KCSEG;
     t->tf.eflags = FLAG_IF;
 
+    list_push_back(&thread_current()->children, &t->c_elem);
     /* Add to run queue. */
 
     thread_unblock(t); // insert (new) t into ready_list
@@ -404,6 +404,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->priority = priority;
     t->origin_priority = priority; // read only
     t->wait_on_lock = NULL;
+    sema_init(&(t->sema_wait), 0);
+    // sema_init(&(t->sema_exit), 0);
     list_init(&(t->donations));
     list_init(&(t->children));
 

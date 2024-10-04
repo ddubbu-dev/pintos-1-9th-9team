@@ -243,6 +243,7 @@ int process_exec(void *fname_n_args) {
 
     /* Start switched process. */
     do_iret(&_if);
+    sema_up(&(thread_current()->sema_wait));
     NOT_REACHED();
 }
 
@@ -265,12 +266,12 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* Wait until the child process is terminated.
      * (sema_up when child process call process_exit) */
-    sema_down(&child_process->sema_wait);
+    sema_down(&(child_process->sema_wait));
     /* Wait for the signal from sema_wait that notifies when
      * the child process has terminated, delete the current thread's children_list */
-    list_remove(&child_process->c_elem);
+    list_remove(&(child_process->c_elem));
     /* Send a signal to the child so that it can fully terminate and scheduling can continue */
-    sema_up(&child_process->sema_exit);
+    // TODO : sema_up(&(child_process->sema_exit));
 
     return child_process->status;
 }
@@ -282,7 +283,7 @@ void process_exit(void) {
      * TODO: Implement process termination message (see
      * TODO: project2/process_termination.html).
      * TODO: We recommend you to implement process resource cleanup here. */
-
+    sema_up(&curr->sema_wait);
     process_cleanup();
 }
 
