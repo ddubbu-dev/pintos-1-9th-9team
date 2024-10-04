@@ -113,9 +113,8 @@ static bool duplicate_pte(uint64_t *pte, void *va, void *aux) {
 static void __do_fork(void *aux) {
     struct intr_frame if_;
     struct thread *parent = (struct thread *)aux;
-    struct thread *current = thread_current();
-    /* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-    struct intr_frame *parent_if;
+    struct thread *current = thread_current(); // Q. aux랑 같은거 아님?
+    struct intr_frame *parent_if = &parent->tf;
     bool succ = true;
 
     /* 1. Read the cpu context to local stack. */

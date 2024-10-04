@@ -64,7 +64,8 @@ void syscall_handler(struct intr_frame *ifp) {
         exit(argv[0]);
         break;
     case SYS_FORK:
-        // fork();
+        thread_current()->tf = *ifp;
+        fork(argv[0]);
         break;
     case SYS_EXEC:
         exec(argv[0]);
@@ -117,3 +118,5 @@ void exit(int exit_code) {
 }
 
 int exec(const char *file) { return process_create_initd(file); }
+
+int fork(const char *thread_name) { return process_fork(thread_name); }
