@@ -143,23 +143,21 @@ int filesize(int fd) {
 int read(int fd, void *buffer, unsigned length) {
     if (fd == 0) {
         return input_getc();
+    } else {
+        struct file *fp = process_get_file(fd);
+        return file_read(fd, buffer, length);
     }
-
-    struct file *fp = process_get_file(fd);
-    return file_read(fd, buffer, length);
 }
 
 int write(int fd, const void *buffer, unsigned length) {
     if (fd == 1) {
         putbuf(buffer, length);
+        return 0;
+    } else {
+        struct file *fp = process_get_file(fd);
+        int written_n = file_write(fp, buffer, length);
+        return written_n;
     }
-    struct file *fp = process_get_file(fd);
-    // enum intr_level old_level = intr_disable();
-    int written_n = file_write(fp, buffer, length);
-    printf("written_n: %d", written_n);
-    // intr_set_level(old_level);
-    // printf("buffer: %s length: %d\n", buffer, length);
-    return written_n;
 }
 
 void seek(int fd, unsigned position) {
