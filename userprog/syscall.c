@@ -128,7 +128,9 @@ int exec(const char *file) { return process_create_initd(file); }
 
 // ============== FILE SYSTEM ==============
 int create(const char *file, unsigned initial_size) {
-    if (strlen(file) == 0)
+    if (file == NULL)
+        exit(-1);
+    else if (strlen(file) == 0)
         return 0;
 
     return filesys_create(file, initial_size);
