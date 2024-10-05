@@ -178,10 +178,10 @@ int filesize(int fd) {
 }
 
 int read(int fd, void *buffer, unsigned length) {
-    if (!validate_ptr(buffer))
+    if (!validate_ptr(buffer) || fd == STDOUT_FILENO)
         exit(-1);
 
-    if (fd == 0) {
+    if (fd == STDIN_FILENO) {
         return input_getc();
     } else {
         struct file *fp = process_get_file(fd);
@@ -190,7 +190,7 @@ int read(int fd, void *buffer, unsigned length) {
 }
 
 int write(int fd, const void *buffer, unsigned length) {
-    if (fd == 1) {
+    if (fd == STDOUT_FILENO) {
         putbuf(buffer, length);
         return 0;
     } else {
