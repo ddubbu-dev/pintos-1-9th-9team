@@ -200,5 +200,8 @@ unsigned tell(int fd) {
 
 void close(int fd) {
     struct file *fp = process_get_file(fd);
+    if (fd < 0 || fd > 15) {
+        exit(-1);
+    }
     file_close(fp);
 }
