@@ -104,7 +104,7 @@ void syscall_handler(struct intr_frame *ifp) {
         remove(argv[0]);
         break;
     case SYS_OPEN:
-        open(argv[0]);
+        ifp->R.rax = open(argv[0]);
         break;
     case SYS_FILESIZE:
         filesize(argv[0]);
@@ -159,7 +159,13 @@ int create(const char *file, unsigned initial_size) {
 int remove(const char *file) { return filesys_remove(file); }
 
 int open(const char *file) {
+    if (file == NULL || !validate_ptr(file))
+        exit(-1);
+
     struct file *fp = filesys_open(file);
+    if (fp == NULL)
+        return -1;
+
     return process_add_file(fp);
 }
 
