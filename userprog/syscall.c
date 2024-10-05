@@ -178,6 +178,9 @@ int filesize(int fd) {
 }
 
 int read(int fd, void *buffer, unsigned length) {
+    if (!validate_ptr(buffer))
+        exit(-1);
+
     if (fd == 0) {
         return input_getc();
     } else {
