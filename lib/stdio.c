@@ -1,3 +1,4 @@
+#include "userprog/syscall.h"
 #include <ctype.h>
 #include <inttypes.h>
 #include <round.h>
@@ -534,24 +535,24 @@ void hex_dump(uintptr_t ofs, const void *buf_, size_t size, bool ascii) {
         n = end - start;
 
         /* Print line. */
-        printf("%016llx  ", (uintmax_t)ROUND_DOWN(ofs, per_line));
+        dev_printf("%016llx  ", (uintmax_t)ROUND_DOWN(ofs, per_line));
         for (i = 0; i < start; i++)
-            printf("   ");
+            dev_printf("   ");
         for (; i < end; i++)
-            printf("%02hhx%c", buf[i - start], i == per_line / 2 - 1 ? '-' : ' ');
+            dev_printf("%02hhx%c", buf[i - start], i == per_line / 2 - 1 ? '-' : ' ');
         if (ascii) {
             for (; i < per_line; i++)
-                printf("   ");
-            printf("|");
+                dev_printf("   ");
+            dev_printf("|");
             for (i = 0; i < start; i++)
-                printf(" ");
+                dev_printf(" ");
             for (; i < end; i++)
-                printf("%c", isprint(buf[i - start]) ? buf[i - start] : '.');
+                dev_printf("%c", isprint(buf[i - start]) ? buf[i - start] : '.');
             for (; i < per_line; i++)
-                printf(" ");
-            printf("|");
+                dev_printf(" ");
+            dev_printf("|");
         }
-        printf("\n");
+        dev_printf("\n");
 
         ofs += n;
         buf += n;

@@ -11,6 +11,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/gdt.h"
+#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include <debug.h>
 #include <inttypes.h>
@@ -35,21 +36,22 @@ static void process_init(void) { struct thread *current = thread_current(); }
  * before process_create_initd() returns. Returns the initd's
  * thread id, or TID_ERROR if the thread cannot be created.
  * Notice that THIS SHOULD BE CALLED ONCE. */
-tid_t process_create_initd(const char *file_name) {
-    char *fn_copy;
+tid_t process_create_initd(const char *fname_n_args) {
+    char *copied_args, *token, *save_ptr;
     tid_t tid;
 
     /* Make a copy of FILE_NAME.
      * Otherwise there's a race between the caller and load(). */
-    fn_copy = palloc_get_page(0); // palloc_flags; !PAL_USER = kernel_pool
-    if (fn_copy == NULL)
+    copied_args = palloc_get_page(0); // palloc_flags; !PAL_USER = kernel_pool
+    if (copied_args == NULL)
         return TID_ERROR;
-    strlcpy(fn_copy, file_name, PGSIZE); // 4KB - Q. 너무 크게 잡은거 아님?
+    strlcpy(copied_args, fname_n_args, PGSIZE); // 4KB - Q. 너무 크게 잡은거 아님?
+    token = strtok_r(fname_n_args, " ", &save_ptr);
 
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
+    tid = thread_create(token, PRI_DEFAULT, initd, copied_args);
     if (tid == TID_ERROR)
-        palloc_free_page(fn_copy);
+        palloc_free_page(copied_args);
     return tid;
 }
 
@@ -164,13 +166,13 @@ void arg_parsing(char *fname_n_args, char **file_name, char **parsed_arr, int *a
 }
 
 void update_rsp(struct intr_frame *ifp, int argc, char **parsed_arr) {
-    printf("============== update_rsp ==============\n");
+    dev_printf("============== update_rsp ==============\n");
     char *argv[1 << 7]; // TODO: malloc으로 바꿔줘도 되는지
 
     for (int i = argc - 1; i >= 0; i--) {
         char *item = parsed_arr[i];
         int len = strlen(item) + 1;
-        printf("[parsed] %s\n", item);
+        dev_printf("[parsed] %s\n", item);
         down_stack(ifp, len);
         memcpy(ifp->rsp, item, len);
         argv[i] = (char *)ifp->rsp;
@@ -233,9 +235,9 @@ int process_exec(void *fname_n_args) {
     /* after setup_stack, Update if.rsp */
     update_rsp(&_if, argc, parsed_arr);
     // 테스트 확인용
-    printf("============== hex_dump ==============\n");
+    dev_printf("============== hex_dump ==============\n");
     hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
-    printf("============== run_test ==============\n");
+    dev_printf("============== run_test ==============\n");
     /* If load failed, quit. */
     palloc_free_page(file_name);
     if (!success)
@@ -691,4 +693,32 @@ struct thread *get_child_process(pid_t pid) {
             return t;
     }
     return NULL;
+}
+
+int process_add_file(struct file *f) {
+    /* 파일 객체에 대한 파일 디스크립터 생성 */
+    struct thread *curr = thread_current();
+    int fd = curr->fdt_last_idx + 1;
+    if (fd > FD_MAX) {
+        dev_printf("TODO: 에러처리 or 빈 곳 찾아서 리턴\n");
+        return -1;
+    }
+
+    curr->fdt[++curr->fdt_last_idx] = f;
+    return curr->fdt_last_idx;
+}
+
+struct file *process_get_file(int fd) {
+    /* 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴 */
+    struct thread *curr = thread_current();
+
+    return curr->fdt[fd];
+}
+
+void process_close_file(int fd) {
+    /* 파일 디스크립터에 해당하는 파일을 닫고 해당 엔트리 초기화 */
+    struct thread *curr = thread_current();
+    struct file *fp = curr->fdt[fd];
+    file_close(fp);
+    curr->fdt[fd] = NULL;
 }
