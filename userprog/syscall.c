@@ -8,7 +8,9 @@
 #include "threads/thread.h"
 #include "userprog/gdt.h"
 #include "userprog/process.h"
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 
 void syscall_entry(void);
@@ -37,8 +39,12 @@ void syscall_init(void) {
     write_msr(MSR_SYSCALL_MASK, FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
-void validate_n_update_argv(struct intr_frame *ifp, uint64_t *argv) {
-    // TODO: 시스템 콜 핸들러에서 유저 스택 포인터(rsp) 주소와 인자가 가리키는 주소(포인터)가 유저 영역인지 확인
+int validate_ptr(uint64_t vaddr) { // user pool 내부에 있고, process page 내에 있는지 확인
+    uint64_t *pml4 = thread_current()->pml4;
+    return pml4_get_page(pml4, vaddr) != NULL;
+}
+
+void get_argv(struct intr_frame *ifp, uint64_t *argv, int argc) {
     dev_printf("============== check_addr ==============\n");
     argv[0] = ifp->R.rdi;
     argv[1] = ifp->R.rsi;
@@ -46,24 +52,37 @@ void validate_n_update_argv(struct intr_frame *ifp, uint64_t *argv) {
     argv[3] = ifp->R.rcx;
     argv[4] = ifp->R.r8;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < argc; i++) {
         dev_printf("argv[%d]: %llu\n", i, argv[i]);
     }
     dev_printf("============== result ==============\n");
 }
 
+struct syscall_action {
+    int num;
+    int argc;
+    // TODO: action handler
+};
+
+static const struct syscall_action syscall_actions[] = {
+    {SYS_HALT, 0}, {SYS_EXIT, 1},     {SYS_EXEC, 1}, {SYS_FORK, 1},  {SYS_WAIT, 1}, {SYS_CREATE, 2}, {SYS_REMOVE, 1},
+    {SYS_OPEN, 1}, {SYS_FILESIZE, 1}, {SYS_READ, 3}, {SYS_WRITE, 3}, {SYS_SEEK, 2}, {SYS_TELL, 1},   {SYS_CLOSE, 1} // 끝
+};
+
 /* The main system call interface */
 void syscall_handler(struct intr_frame *ifp) {
     uint64_t argv[5];
     int sys_call_num = ifp->R.rax;
-    dev_printf("system call! [%d]\n", sys_call_num);
-    validate_n_update_argv(ifp, argv);
+    dev_printf("\n\nsystem call! [%d]\n", sys_call_num);
+    const struct syscall_action *action = &syscall_actions[sys_call_num];
+    get_argv(ifp, argv, action->argc);
 
     switch (sys_call_num) {
     case SYS_HALT:
         halt();
         break;
     case SYS_EXIT:
+        dev_printf("exit 진입!\n");
         int exit_status = argv[0];
         exit(exit_status);
         break;
@@ -78,7 +97,8 @@ void syscall_handler(struct intr_frame *ifp) {
         wait(argv[0]);
         break;
     case SYS_CREATE:
-        create(argv[0], argv[1]);
+        dev_printf("create 진입!\n");
+        ifp->R.rax = create(argv[0], argv[1]);
         break;
     case SYS_REMOVE:
         remove(argv[0]);
@@ -93,6 +113,7 @@ void syscall_handler(struct intr_frame *ifp) {
         read(argv[0], argv[1], argv[2]);
         break;
     case SYS_WRITE:
+        dev_printf("write 진입!\n");
         write(argv[0], argv[1], argv[2]);
         break;
     case SYS_SEEK:
@@ -126,7 +147,14 @@ int wait(pid_t tid) { return process_wait(tid); }
 int exec(const char *file) { return process_create_initd(file); }
 
 // ============== FILE SYSTEM ==============
-int create(const char *file, unsigned initial_size) { return filesys_create(file, initial_size); }
+int create(const char *file, unsigned initial_size) {
+    if (file == NULL || !(validate_ptr(file)))
+        exit(-1);
+    else if (strlen(file) == 0)
+        return 0;
+
+    return filesys_create(file, initial_size);
+}
 
 int remove(const char *file) { return filesys_remove(file); }
 
