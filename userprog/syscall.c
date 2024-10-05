@@ -195,17 +195,22 @@ int read(int fd, void *buffer, unsigned length) {
 }
 
 int write(int fd, const void *buffer, unsigned length) {
-    if (!validate_ptr(buffer))
+    if (!validate_ptr(buffer) || fd == STDIN_FILENO)
         exit(-1);
 
-    if (fd == STDOUT_FILENO) {
+    if (fd < 0 || fd > FD_MAX)
+        return -1;
+    else if (fd == STDOUT_FILENO) {
         putbuf(buffer, length);
         return 0;
-    } else {
-        struct file *fp = process_get_file(fd);
-        int written_n = file_write(fp, buffer, length);
-        return written_n;
     }
+
+    struct file *fp = process_get_file(fd);
+
+    if (fp == NULL)
+        return -1;
+
+    return file_write(fp, buffer, length);
 }
 
 void seek(int fd, unsigned position) {
