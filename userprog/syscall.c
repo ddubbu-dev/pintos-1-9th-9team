@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include "devices/input.h"
 #include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "intrinsic.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
@@ -87,40 +88,42 @@ void syscall_handler(struct intr_frame *ifp) {
         exit(exit_status);
         break;
     case SYS_FORK:
-        // fork();
+        // ifp->R.rax = fork();
         break;
     case SYS_EXEC:
         char *file_name = argv[0];
-        exec(file_name);
+        ifp->R.rax = exec(file_name);
         break;
     case SYS_WAIT:
-        wait(argv[0]);
+        ifp->R.rax = wait(argv[0]);
         break;
     case SYS_CREATE:
         dev_printf("create 진입!\n");
         ifp->R.rax = create(argv[0], argv[1]);
         break;
     case SYS_REMOVE:
-        remove(argv[0]);
+        ifp->R.rax = remove(argv[0]);
         break;
     case SYS_OPEN:
-        ifp->R.rax = open(argv[0]);
+        dev_printf("open 진입!\n");
+        ifp->R.rax = open((char *)argv[0]);
         break;
     case SYS_FILESIZE:
-        filesize(argv[0]);
+        ifp->R.rax = filesize(argv[0]);
         break;
     case SYS_READ:
-        read(argv[0], argv[1], argv[2]);
+        dev_printf("read 진입!\n");
+        ifp->R.rax = read(argv[0], argv[1], argv[2]);
         break;
     case SYS_WRITE:
         dev_printf("write 진입!\n");
-        write(argv[0], argv[1], argv[2]);
+        ifp->R.rax = write(argv[0], argv[1], argv[2]);
         break;
     case SYS_SEEK:
         seek(argv[0], argv[1]);
         break;
     case SYS_TELL:
-        tell(argv[0]);
+        ifp->R.rax = tell(argv[0]);
         break;
     case SYS_CLOSE:
         close(argv[0]);
@@ -179,7 +182,7 @@ int read(int fd, void *buffer, unsigned length) {
         return input_getc();
     } else {
         struct file *fp = process_get_file(fd);
-        return file_read(fd, buffer, length);
+        return file_read(fp, buffer, length);
     }
 }
 
