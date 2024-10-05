@@ -195,6 +195,9 @@ int read(int fd, void *buffer, unsigned length) {
 }
 
 int write(int fd, const void *buffer, unsigned length) {
+    if (!validate_ptr(buffer))
+        exit(-1);
+
     if (fd == STDOUT_FILENO) {
         putbuf(buffer, length);
         return 0;
