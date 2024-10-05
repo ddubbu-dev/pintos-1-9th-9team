@@ -181,12 +181,17 @@ int read(int fd, void *buffer, unsigned length) {
     if (!validate_ptr(buffer) || fd == STDOUT_FILENO)
         exit(-1);
 
-    if (fd == STDIN_FILENO) {
+    if (fd < 0 || fd > FD_MAX)
+        return -1;
+    else if (fd == STDIN_FILENO)
         return input_getc();
-    } else {
-        struct file *fp = process_get_file(fd);
-        return file_read(fp, buffer, length);
-    }
+
+    struct file *fp = process_get_file(fd);
+
+    if (fp == NULL)
+        return -1;
+
+    return file_read(fp, buffer, length);
 }
 
 int write(int fd, const void *buffer, unsigned length) {
