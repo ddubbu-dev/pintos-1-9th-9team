@@ -6,6 +6,7 @@
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/loader.h"
+#include "threads/palloc.h"
 #include "threads/thread.h"
 #include "userprog/gdt.h"
 #include "userprog/process.h"
@@ -70,6 +71,8 @@ static const struct syscall_action syscall_actions[] = {
     {SYS_OPEN, 1}, {SYS_FILESIZE, 1}, {SYS_READ, 3}, {SYS_WRITE, 3}, {SYS_SEEK, 2}, {SYS_TELL, 1},   {SYS_CLOSE, 1} // 끝
 };
 
+static struct intr_frame *frame;
+
 /* The main system call interface */
 void syscall_handler(struct intr_frame *ifp) {
     uint64_t argv[5];
@@ -77,6 +80,8 @@ void syscall_handler(struct intr_frame *ifp) {
     dev_printf("\n\nsystem call! [%d]\n", sys_call_num);
     const struct syscall_action *action = &syscall_actions[sys_call_num];
     get_argv(ifp, argv, action->argc);
+
+    frame = ifp;
 
     switch (sys_call_num) {
     case SYS_HALT:
@@ -88,7 +93,7 @@ void syscall_handler(struct intr_frame *ifp) {
         exit(exit_status);
         break;
     case SYS_FORK:
-        // ifp->R.rax = fork();
+        ifp->R.rax = fork(argv[0]);
         break;
     case SYS_EXEC:
         char *file_name = argv[0];
@@ -141,13 +146,29 @@ void halt() { power_off(); }
 
 void exit(int exit_code) {
     struct thread *curr = thread_current();
+    curr->exit_status = exit_code;
     printf("%s: exit(%d)\n", curr->name, exit_code);
     thread_exit();
 }
 
 int wait(pid_t tid) { return process_wait(tid); }
 
-int exec(const char *file) { return process_create_initd(file); }
+int exec(const char *file_name) {
+
+    if (file_name == NULL || !validate_ptr(file_name))
+        exit(-1);
+
+    char *file_name_copy = palloc_get_page(PAL_ZERO); // 페이지 할당을 통해 파일 이름을 복사할 메모리 공간을 얻습니다.
+    if (file_name_copy == NULL)
+        exit(-1); // 메모리 할당에 실패한 경우, -1을 반환하고 현재 프로세스를 종료합니다.
+
+    strlcpy(file_name_copy, file_name, PGSIZE); // file_name을 file_name_copy로 복사합니다. PGSIZE는 복사할 최대 크기를 나타냅니다.
+
+    if (process_exec(file_name_copy) == -1)
+        exit(-1); // process_exec 함수를 호출하여 파일을 실행합니다. 실행에 실패한 경우, -1을 반환하고 현재 프로세스를 종료합니다.
+
+    return process_exec(file_name_copy);
+}
 
 // ============== FILE SYSTEM ==============
 int create(const char *file, unsigned initial_size) {
@@ -230,3 +251,5 @@ void close(int fd) {
     }
     process_close_file(fd);
 }
+
+int fork(const char *thread_name) { process_fork(thread_name, frame); }

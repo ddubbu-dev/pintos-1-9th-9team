@@ -71,9 +71,28 @@ static void initd(void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 // Q. 왜 thread_create를 하는걸까?
-tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED) {
+tid_t process_fork(const char *name, struct intr_frame *if_) {
     /* Clone current thread to new thread.*/
-    return thread_create(name, PRI_DEFAULT, __do_fork, thread_current());
+    struct thread *cur = thread_current();
+    memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
+
+    // 현재 스레드를 fork한 new 스레드를 생성한다.
+    tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, cur);
+    if (pid == TID_ERROR)
+        return TID_ERROR;
+
+    // 자식이 로드될 때까지 대기하기 위해서 방금 생성한 자식 스레드를 찾는다.
+    struct thread *child = get_child_process(pid);
+
+    // 현재 스레드는 생성만 완료된 상태. 생성되어서 ready_list에 들어가고 실행될 때 __do_fork 함수가 실행
+    //__do_fork 함수가 실행되어 로드가 완료될 때까지 부모는 대기한다.
+    sema_down(&child->sema_load);
+
+    if (child->exit_status == TID_ERROR)
+        return TID_ERROR;
+
+    // 자식 프로세스의 pid를 반환한다.
+    return pid;
 }
 
 #ifndef VM
@@ -87,22 +106,31 @@ static bool duplicate_pte(uint64_t *pte, void *va, void *aux) {
     bool writable;
 
     /* 1. TODO: If the parent_page is kernel page, then return immediately. */
-
+    if is_kernel_vaddr (va) {
+        return false;
+    }
     /* 2. Resolve VA from the parent's page map level 4. */
-    // virtual addr -> (by pml4 : 페이지 테이블) -> physical addr
     parent_page = pml4_get_page(parent->pml4, va);
-
+    if (parent_page == NULL) {
+        return false;
+    }
     /* 3. TODO: Allocate new PAL_USER page for the child and set result to
      *    TODO: NEWPAGE. */
-
+    newpage = palloc_get_page(PAL_USER | PAL_ZERO);
+    if (newpage == NULL) {
+        return false;
+    }
     /* 4. TODO: Duplicate parent's page to the new page and
      *    TODO: check whether parent's page is writable or not (set WRITABLE
      *    TODO: according to the result). */
+    memcpy(newpage, parent_page, PGSIZE);
+    writable = is_writable(pte);
 
     /* 5. Add new page to child's page table at address VA with WRITABLE
      *    permission. */
-    if (!pml4_set_page(current->pml4, va, newpage, writable)) { // Q. 내부 구현
+    if (!pml4_set_page(current->pml4, va, newpage, writable)) {
         /* 6. TODO: if fail to insert page, do error handling. */
+        return false;
     }
     return true;
 }
@@ -117,11 +145,12 @@ static void __do_fork(void *aux) {
     struct thread *parent = (struct thread *)aux;
     struct thread *current = thread_current();
     /* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-    struct intr_frame *parent_if;
+    struct intr_frame *parent_if = &parent->parent_if;
     bool succ = true;
 
     /* 1. Read the cpu context to local stack. */
     memcpy(&if_, parent_if, sizeof(struct intr_frame));
+    if_.R.rax = 0; // 자식 프로세스의 리턴값은 0
 
     /* 2. Duplicate PT */
     current->pml4 = pml4_create();
@@ -144,12 +173,19 @@ static void __do_fork(void *aux) {
      * TODO:       from the fork() until this function successfully duplicates
      * TODO:       the resources of parent.*/
 
+    // 파일 디스크립터 테이블의 파일 복제
+    struct file *fdt[FD_MAX + 1]; // 파일 디스크립터 테이블
+    memcpy(current->fdt, &parent->fdt, sizeof(fdt));
+
+    // 로드가 완료될 때까지 기다리고 있던 부모 대기 해제
+    sema_up(&current->sema_load);
     process_init();
 
     /* Finally, switch to the newly created process. */
     if (succ)
         do_iret(&if_);
 error:
+    sema_up(&current->sema_load);
     thread_exit();
 }
 
@@ -274,7 +310,7 @@ int process_wait(tid_t child_tid UNUSED) {
     list_remove(&(child_process->c_elem));
     /* Send a signal to the child so that it can fully terminate and scheduling can continue */
     // TODO : sema_up(&(child_process->sema_exit));
-
+    sema_up(&child_process->sema_exit);
     return child_process->status;
 }
 
@@ -285,8 +321,10 @@ void process_exit(void) {
      * TODO: Implement process termination message (see
      * TODO: project2/process_termination.html).
      * TODO: We recommend you to implement process resource cleanup here. */
-    sema_up(&curr->sema_wait);
     process_cleanup();
+
+    sema_up(&curr->sema_wait);
+    sema_down(&curr->sema_exit);
 }
 
 /* Free the current process's resources. */

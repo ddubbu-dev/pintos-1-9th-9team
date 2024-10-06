@@ -108,7 +108,7 @@ struct thread {
     struct list children;
     struct semaphore sema_wait; /* sema_down if children process running */
 
-    /* --------------Information of child process*---------------- */
+    /* --------------Information of child process---------------- */
     struct list_elem c_elem;    /* List element for children */
     struct semaphore sema_exit; /* sema_up if children process terminated */
 
@@ -116,6 +116,12 @@ struct thread {
     struct file *fdt[FD_MAX + 1];
 
     int fdt_last_idx;
+
+    /* --------------확인 필요---------------- */
+
+    struct intr_frame parent_if;
+    struct semaphore sema_load;
+    int exit_status;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
