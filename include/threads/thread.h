@@ -106,14 +106,15 @@ struct thread {
 
     /* --------------Information of parent process---------------- */
     struct list children;
-    struct semaphore sema_wait; /* sema_down if children process running */
+    struct semaphore wait_sema; /* sema_down if children process running */
 
-    /* --------------Information of child process*---------------- */
+    /* --------------Information of child process---------------- */
     struct list_elem c_elem;    /* List element for children */
-    struct semaphore sema_exit; /* sema_up if children process terminated */
+    struct semaphore free_sema; /* sema_up if children process terminated */
 
     /* Manage File System */
     struct file *fdt[FD_MAX + 1];
+    struct file *running;
 
     int fdt_last_idx;
 
@@ -128,7 +129,13 @@ struct thread {
 
     /* Owned by thread.c. */
     struct intr_frame tf; /* Information for switching */
-    unsigned magic;       /* Detects stack overflow. */
+
+    /* --------------시도중---------------- */
+    struct intr_frame parent_if;
+    struct semaphore fork_sema;
+    int exit_status;
+
+    unsigned magic; /* Detects stack overflow. */
 };
 
 /* If false (default), use round-robin scheduler.
