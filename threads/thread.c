@@ -404,11 +404,13 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->priority = priority;
     t->origin_priority = priority; // read only
     t->wait_on_lock = NULL;
-    sema_init(&(t->sema_wait), 0);
-    // sema_init(&(t->sema_exit), 0);
+    sema_init(&(t->wait_sema), 0);
+    sema_init(&(t->free_sema), 0);
+    sema_init(&(t->fork_sema), 0);
     list_init(&(t->donations));
     list_init(&(t->children));
     t->fdt_last_idx = 1; // 0: STDIN, 1: STDOUT
+    t->exit_status = 0;
 
     t->magic = THREAD_MAGIC;
 }

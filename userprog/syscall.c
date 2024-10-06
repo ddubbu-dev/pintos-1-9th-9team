@@ -89,7 +89,7 @@ void syscall_handler(struct intr_frame *ifp) {
         exit(exit_status);
         break;
     case SYS_FORK:
-        // ifp->R.rax = fork();
+        ifp->R.rax = fork(argv[0], ifp);
         break;
     case SYS_EXEC:
         char *file_name = argv[0];
@@ -142,6 +142,7 @@ void halt() { power_off(); }
 
 void exit(int exit_code) {
     struct thread *curr = thread_current();
+    curr->exit_status = exit_code;
     printf("%s: exit(%d)\n", curr->name, exit_code);
     thread_exit();
 }
@@ -241,3 +242,5 @@ void close(int fd) {
     }
     process_close_file(fd);
 }
+
+int fork(const char *thread_name, struct intr_frame *ifp) { return process_fork(thread_name, ifp); }
