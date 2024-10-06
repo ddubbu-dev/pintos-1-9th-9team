@@ -114,6 +114,7 @@ struct thread {
 
     /* Manage File System */
     struct file *fdt[FD_MAX + 1];
+    struct file *running;
 
     int fdt_last_idx;
 
