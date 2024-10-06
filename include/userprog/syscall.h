@@ -15,7 +15,7 @@ void syscall_init(void);
 void halt(void);
 void exit(int exit_code);
 int fork(const char *thread_name);
-int exec(const char *file);
+int exec(const char *cmd_line);
 int wait(pid_t pid);
 int create(const char *file, unsigned initial_size);
 int remove(const char *file);

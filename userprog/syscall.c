@@ -6,6 +6,7 @@
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/loader.h"
+#include "threads/palloc.h"
 #include "threads/thread.h"
 #include "userprog/gdt.h"
 #include "userprog/process.h"
@@ -147,7 +148,17 @@ void exit(int exit_code) {
 
 int wait(pid_t tid) { return process_wait(tid); }
 
-int exec(const char *file) { return process_create_initd(file); }
+int exec(const char *cmd_line) {
+
+    if (cmd_line == NULL || !validate_ptr(cmd_line))
+        exit(-1);
+
+    char *cmd_line_copy = palloc_get_page(PAL_ZERO);
+    strlcpy(cmd_line_copy, cmd_line, PGSIZE);
+
+    if (process_exec(cmd_line_copy) == TID_ERROR)
+        exit(-1);
+}
 
 // ============== FILE SYSTEM ==============
 int create(const char *file, unsigned initial_size) {
