@@ -225,5 +225,8 @@ unsigned tell(int fd) {
 
 void close(int fd) {
     struct file *fp = process_get_file(fd);
-    file_close(fp);
+    if (fd < 0 || fd > FD_MAX) {
+        exit(-1);
+    }
+    process_close_file(fd);
 }

@@ -710,8 +710,10 @@ int process_add_file(struct file *f) {
 
 struct file *process_get_file(int fd) {
     /* 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴 */
+    if (fd < 0 || fd > FD_MAX) {
+        return NULL;
+    }
     struct thread *curr = thread_current();
-
     return curr->fdt[fd];
 }
 
