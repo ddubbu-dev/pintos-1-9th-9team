@@ -6,6 +6,7 @@
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/loader.h"
+#include "threads/palloc.h"
 #include "threads/thread.h"
 #include "userprog/gdt.h"
 #include "userprog/process.h"
@@ -88,7 +89,7 @@ void syscall_handler(struct intr_frame *ifp) {
         exit(exit_status);
         break;
     case SYS_FORK:
-        // ifp->R.rax = fork();
+        ifp->R.rax = fork(argv[0], ifp);
         break;
     case SYS_EXEC:
         char *file_name = argv[0];
@@ -141,13 +142,24 @@ void halt() { power_off(); }
 
 void exit(int exit_code) {
     struct thread *curr = thread_current();
+    curr->exit_status = exit_code;
     printf("%s: exit(%d)\n", curr->name, exit_code);
     thread_exit();
 }
 
 int wait(pid_t tid) { return process_wait(tid); }
 
-int exec(const char *file) { return process_create_initd(file); }
+int exec(const char *cmd_line) {
+
+    if (cmd_line == NULL || !validate_ptr(cmd_line))
+        exit(-1);
+
+    char *cmd_line_copy = palloc_get_page(PAL_ZERO);
+    strlcpy(cmd_line_copy, cmd_line, PGSIZE);
+
+    if (process_exec(cmd_line_copy) == TID_ERROR)
+        exit(-1);
+}
 
 // ============== FILE SYSTEM ==============
 int create(const char *file, unsigned initial_size) {
@@ -230,3 +242,5 @@ void close(int fd) {
     }
     process_close_file(fd);
 }
+
+int fork(const char *thread_name, struct intr_frame *ifp) { return process_fork(thread_name, ifp); }
