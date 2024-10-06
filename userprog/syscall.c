@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include "devices/input.h"
 #include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "intrinsic.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
@@ -87,40 +88,42 @@ void syscall_handler(struct intr_frame *ifp) {
         exit(exit_status);
         break;
     case SYS_FORK:
-        // fork();
+        // ifp->R.rax = fork();
         break;
     case SYS_EXEC:
         char *file_name = argv[0];
-        exec(file_name);
+        ifp->R.rax = exec(file_name);
         break;
     case SYS_WAIT:
-        wait(argv[0]);
+        ifp->R.rax = wait(argv[0]);
         break;
     case SYS_CREATE:
         dev_printf("create 진입!\n");
         ifp->R.rax = create(argv[0], argv[1]);
         break;
     case SYS_REMOVE:
-        remove(argv[0]);
+        ifp->R.rax = remove(argv[0]);
         break;
     case SYS_OPEN:
-        open(argv[0]);
+        dev_printf("open 진입!\n");
+        ifp->R.rax = open((char *)argv[0]);
         break;
     case SYS_FILESIZE:
-        filesize(argv[0]);
+        ifp->R.rax = filesize(argv[0]);
         break;
     case SYS_READ:
-        read(argv[0], argv[1], argv[2]);
+        dev_printf("read 진입!\n");
+        ifp->R.rax = read(argv[0], argv[1], argv[2]);
         break;
     case SYS_WRITE:
         dev_printf("write 진입!\n");
-        write(argv[0], argv[1], argv[2]);
+        ifp->R.rax = write(argv[0], argv[1], argv[2]);
         break;
     case SYS_SEEK:
         seek(argv[0], argv[1]);
         break;
     case SYS_TELL:
-        tell(argv[0]);
+        ifp->R.rax = tell(argv[0]);
         break;
     case SYS_CLOSE:
         close(argv[0]);
@@ -159,7 +162,13 @@ int create(const char *file, unsigned initial_size) {
 int remove(const char *file) { return filesys_remove(file); }
 
 int open(const char *file) {
+    if (file == NULL || !validate_ptr(file))
+        exit(-1);
+
     struct file *fp = filesys_open(file);
+    if (fp == NULL)
+        return -1;
+
     return process_add_file(fp);
 }
 
@@ -169,23 +178,39 @@ int filesize(int fd) {
 }
 
 int read(int fd, void *buffer, unsigned length) {
-    if (fd == 0) {
+    if (!validate_ptr(buffer) || fd == STDOUT_FILENO)
+        exit(-1);
+
+    if (fd < 0 || fd > FD_MAX)
+        return -1;
+    else if (fd == STDIN_FILENO)
         return input_getc();
-    } else {
-        struct file *fp = process_get_file(fd);
-        return file_read(fd, buffer, length);
-    }
+
+    struct file *fp = process_get_file(fd);
+
+    if (fp == NULL)
+        return -1;
+
+    return file_read(fp, buffer, length);
 }
 
 int write(int fd, const void *buffer, unsigned length) {
-    if (fd == 1) {
+    if (!validate_ptr(buffer) || fd == STDIN_FILENO)
+        exit(-1);
+
+    if (fd < 0 || fd > FD_MAX)
+        return -1;
+    else if (fd == STDOUT_FILENO) {
         putbuf(buffer, length);
         return 0;
-    } else {
-        struct file *fp = process_get_file(fd);
-        int written_n = file_write(fp, buffer, length);
-        return written_n;
     }
+
+    struct file *fp = process_get_file(fd);
+
+    if (fp == NULL)
+        return -1;
+
+    return file_write(fp, buffer, length);
 }
 
 void seek(int fd, unsigned position) {
